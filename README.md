@@ -1,4 +1,4 @@
-<img src="https://raw.githubusercontent.com/rbizoi/dockerBigDataBI/refs/heads/master/images/architecture.png" width="256">
+<img src="https://raw.githubusercontent.com/rbizoi/FormationBigDataBI/refs/heads/master/images/architecture.png" width="1024">
 
 # Docker formation Big Data et BI — Windows et Linux
 
