@@ -1,7 +1,4 @@
-<img src="https://raw.githubusercontent.com/rbizoi/FormationBigDataBI/refs/heads/master/images/architecture.png" width="1024">
-
 # Docker formation Big Data et BI — Windows et Linux
-
 
 Laboratoire pédagogique utilisable avec **les mêmes commandes Docker** sous Windows (Docker Desktop en mode conteneurs Linux / WSL2) et Linux (Docker Engine + Compose v2, ou Docker Desktop). Aucun script Shell, PowerShell ou CMD à exécuter ; Python et les dépendances tournent dans les conteneurs.
 
@@ -121,3 +118,72 @@ Cette dernière commande supprime aussi les notebooks modifiés dans le volume. 
 ## Portée des vérifications de cette modification
 
 Configuration validée avec Docker Compose, syntaxes Python et contrats de fichiers vérifiés. L’environnement d’édition ne possède pas de daemon Docker : les images n’y ont pas été construites, les conteneurs n’y ont pas démarré et les intégrations runtime ne sont **pas encore certifiées**. Les commandes de contrôle ci-dessus doivent réussir sur votre machine pour confirmer la pile complète. Les anciens documents de correction décrivent l’historique ; ce README est la procédure actuelle.
+
+## Accès Spark, Airflow et copie intégrale vers S3
+
+Les volumes Docker `spark-data` et `spark-jobs` sont initialisés depuis les
+répertoires du projet par `workspace-init`, sans changer les droits des fichiers
+Windows/Linux de l'hôte. Spark est propriétaire et peut lire/écrire les deux
+volumes. Les répertoires sont en mode 2775 et les fichiers en mode 664, groupe 0.
+`/home/spark/data` et `/home/spark/jobs` pointent respectivement vers
+`/opt/spark/data` et `/opt/spark/jobs` : les jobs existants restent compatibles.
+
+| Composants | Données | Jobs |
+|---|---|---|
+| Spark master, workers 1/2, history, Jupyter | lecture/écriture, utilisateur spark | lecture/écriture, utilisateur spark |
+| Airflow et airflow-check | lecture seule, utilisateur airflow | lecture seule, utilisateur airflow |
+| integration-check | lecture/écriture, utilisateur spark | lecture/écriture, utilisateur spark |
+| Producteurs fichiers/logs, API simulée, Druid middlemanager | lecture du répertoire data de l'hôte | pas de montage jobs |
+| Autres services | échanges réseau/API/S3, pas de montage de ces répertoires | pas de montage jobs |
+
+`objectstore-init` copie **tous les fichiers** du répertoire `data` vers
+`s3://lakehouse/data/`, en conservant les sous-répertoires. Cela inclut Olist,
+la météo, les logs et les fichiers Parquet/gzip. Chaque copie est relue et
+comparée par SHA-256. Le manifeste est `s3://lakehouse/data-manifest.json`.
+La copie utilise l'API S3 de RustFS sur `http://objectstore:9000` ; Spark utilise
+les identifiants déjà configurés et les chemins `s3a://lakehouse/data/...`.
+L'accès Spark utilise les JAR Hadoop S3A déjà inclus dans l'image.
+
+### Recréer tous les conteneurs (Windows et Linux)
+
+Depuis ce dossier, avec le même nom de projet que l'installation précédente :
+
+```text
+docker compose --profile full --profile checks down
+docker compose --profile full --profile checks build
+docker compose run --rm workspace-init
+docker compose --profile full up -d --force-recreate
+docker compose run --rm objectstore-init
+docker compose run --rm objectstore-init --verify-only
+docker compose --profile full ps -a
+docker compose --profile checks run --rm integration-check --full
+docker compose --profile checks run --rm airflow-check
+```
+
+Ces commandes conservent les volumes PostgreSQL, Kafka, RustFS et les autres
+volumes persistants. L'initialisation recopie les fichiers livrés et normalise
+les droits des volumes Spark. Elle remplace les fichiers portant le même nom ;
+sauvegarder les modifications pédagogiques avant une nouvelle initialisation.
+Elle ne supprime pas les fichiers supplémentaires. La copie S3 ne supprime pas
+non plus d'anciens objets supplémentaires ; le test signale une divergence.
+Après ajout/modification des données sources, relancer `workspace-init` puis
+`objectstore-init` avant les tests. Arrêter les traitements avant cette copie.
+
+Le nouveau job `10_verify_workspace_s3.py` vérifie la lecture de chaque fichier,
+la création/suppression de fichiers par Spark dans les deux répertoires, les
+alias `/home/spark`, les accès des exécuteurs non root, les SHA-256 via une
+lecture Spark distribuée de S3 et les 2 000 ventes (identifiants distincts).
+`airflow-check` lance le même job sous l'utilisateur Airflow : lecture locale
+seule et traitements distribués sur les workers Spark. Les rapports sont dans
+le volume `check-reports`, consultables via le portail.
+
+```text
+docker compose exec --user spark spark-jupyter python3 -c "from pathlib import Path; print(list(Path('/home/spark/data').iterdir())); print(list(Path('/home/spark/jobs').iterdir()))"
+docker compose --profile full exec --user airflow airflow python3 -c "from pathlib import Path; print(Path('/home/spark/data/input/sales.csv').open().readline()); print(Path('/home/spark/jobs/10_verify_workspace_s3.py').is_file())"
+docker compose logs workspace-init objectstore-init
+```
+
+Validation de cette révision : contrats statiques et tests Python exécutés.
+Construction et démarrage Docker non exécutés dans l'environnement de création,
+qui ne dispose pas du moteur Docker. Les commandes d'intégration ci-dessus
+restent nécessaires sur la machine de formation.

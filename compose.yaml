@@ -1,5 +1,21 @@
 name: bigdata-training
 services:
+  workspace-init:
+    image: bigdata-training/spark-runtime:local
+    build:
+      context: .
+      dockerfile: spark/runtime/Dockerfile
+    user: 0:0
+    restart: 'no'
+    entrypoint: [python3, /workspace-init.py]
+    volumes:
+    - ./docker/workspace-init.py:/workspace-init.py:ro
+    - ./data:/seed/data:ro
+    - ./spark/jobs:/seed/jobs:ro
+    - spark-data:/opt/spark/data
+    - spark-jobs:/opt/spark/jobs
+    - check-reports:/reports
+    networks: [training-net]
   postgres-source:
     image: postgres:17.11-alpine
     restart: unless-stopped
@@ -170,6 +186,9 @@ services:
       S3_SECRET_KEY: ${S3_SECRET_KEY:-TRAINING_ONLY_S3_PASSWORD}
       AWS_REGION: ${AWS_REGION:-us-east-1}
       REQUIRED_BUCKETS: warehouse,lakehouse,checkpoints,druid
+      DATA_DIR: /seed/data
+    volumes:
+    - ./data:/seed/data:ro
     networks:
     - training-net
   iceberg-catalog-permissions:
@@ -237,9 +256,9 @@ services:
     volumes:
     - ./spark/conf/spark-defaults.conf:/opt/spark/conf/spark-defaults.conf:ro
     - ./spark/conf/log4j2.properties:/opt/spark/conf/log4j2.properties:ro
-    - ./spark/jobs:/opt/spark/jobs:ro
+    - spark-jobs:/opt/spark/jobs
     - ./spark/notebooks:/opt/spark/notebooks
-    - ./data:/opt/spark/data:ro
+    - spark-data:/opt/spark/data
     networks: &id002
     - training-net
     build:
@@ -269,6 +288,8 @@ services:
       retries: 30
       start_period: 10s
     depends_on:
+      workspace-init:
+        condition: service_completed_successfully
       kafka-init:
         condition: service_completed_successfully
       objectstore-init:
@@ -282,9 +303,9 @@ services:
     volumes:
     - ./spark/conf/spark-defaults.conf:/opt/spark/conf/spark-defaults.conf:ro
     - ./spark/conf/log4j2.properties:/opt/spark/conf/log4j2.properties:ro
-    - ./spark/jobs:/opt/spark/jobs:ro
+    - spark-jobs:/opt/spark/jobs
     - ./spark/notebooks:/opt/spark/notebooks
-    - ./data:/opt/spark/data:ro
+    - spark-data:/opt/spark/data
     networks: *id002
     hostname: spark-worker-1
     mem_limit: 1536m
@@ -311,6 +332,8 @@ services:
       retries: 30
       start_period: 10s
     depends_on:
+      workspace-init:
+        condition: service_completed_successfully
       spark-master:
         condition: service_healthy
     build:
@@ -323,9 +346,9 @@ services:
     volumes:
     - ./spark/conf/spark-defaults.conf:/opt/spark/conf/spark-defaults.conf:ro
     - ./spark/conf/log4j2.properties:/opt/spark/conf/log4j2.properties:ro
-    - ./spark/jobs:/opt/spark/jobs:ro
+    - spark-jobs:/opt/spark/jobs
     - ./spark/notebooks:/opt/spark/notebooks
-    - ./data:/opt/spark/data:ro
+    - spark-data:/opt/spark/data
     networks: *id002
     hostname: spark-worker-2
     mem_limit: 1536m
@@ -352,6 +375,8 @@ services:
       retries: 30
       start_period: 10s
     depends_on:
+      workspace-init:
+        condition: service_completed_successfully
       spark-master:
         condition: service_healthy
     build:
@@ -364,9 +389,9 @@ services:
     volumes:
     - ./spark/conf/spark-defaults.conf:/opt/spark/conf/spark-defaults.conf:ro
     - ./spark/conf/log4j2.properties:/opt/spark/conf/log4j2.properties:ro
-    - ./spark/jobs:/opt/spark/jobs:ro
+    - spark-jobs:/opt/spark/jobs
     - ./spark/notebooks:/opt/spark/notebooks
-    - ./data:/opt/spark/data:ro
+    - spark-data:/opt/spark/data
     networks: *id002
     hostname: spark-history
     mem_limit: 1g
@@ -386,6 +411,8 @@ services:
       retries: 40
       start_period: 15s
     depends_on:
+      workspace-init:
+        condition: service_completed_successfully
       spark-master:
         condition: service_healthy
       objectstore-init:
@@ -423,8 +450,8 @@ services:
     volumes:
     - ./spark/conf/spark-defaults.conf:/opt/spark/conf/spark-defaults.conf:ro
     - ./spark/conf/log4j2.properties:/opt/spark/conf/log4j2.properties:ro
-    - ./spark/jobs:/opt/spark/jobs:ro
-    - ./data:/opt/spark/data:ro
+    - spark-jobs:/opt/spark/jobs
+    - spark-data:/opt/spark/data
     - spark-notebooks:/opt/spark/notebooks
     networks: *id002
     hostname: spark-jupyter
@@ -455,6 +482,8 @@ services:
       retries: 40
       start_period: 20s
     depends_on:
+      workspace-init:
+        condition: service_completed_successfully
       spark-master:
         condition: service_healthy
       spark-worker-1:
@@ -642,6 +671,8 @@ services:
     restart: unless-stopped
     mem_limit: 2g
     depends_on:
+      workspace-init:
+        condition: service_completed_successfully
       airflow-db:
         condition: service_healthy
       spark-master:
@@ -678,9 +709,9 @@ services:
     volumes:
     - ./airflow/dags:/opt/airflow/dags:ro
     - airflow-logs:/opt/airflow/logs
-    - ./spark/jobs:/opt/spark/jobs:ro
+    - spark-jobs:/opt/spark/jobs:ro
     - ./spark/conf:/opt/spark/conf:ro
-    - ./data:/opt/spark/data:ro
+    - spark-data:/opt/spark/data:ro
     networks:
     - training-net
   elasticsearch:
@@ -1209,13 +1240,16 @@ services:
     networks:
     - training-net
   integration-check:
+    depends_on:
+      workspace-init:
+        condition: service_completed_successfully
     image: bigdata-training/spark-runtime:local
     build:
       context: .
       dockerfile: spark/runtime/Dockerfile
     profiles:
     - checks
-    user: 0:0
+    user: spark
     restart: 'no'
     hostname: integration-check
     entrypoint:
@@ -1240,14 +1274,17 @@ services:
     volumes:
     - ./spark/conf/spark-defaults.conf:/opt/spark/conf/spark-defaults.conf:ro
     - ./spark/conf/log4j2.properties:/opt/spark/conf/log4j2.properties:ro
-    - ./spark/jobs:/opt/spark/jobs:ro
-    - ./data:/opt/spark/data:ro
+    - spark-jobs:/opt/spark/jobs
+    - spark-data:/opt/spark/data
     - ./checks:/checks:ro
-    - ./reports:/reports
+    - check-reports:/reports
     - ./docker:/producers:ro
     networks:
     - training-net
   airflow-check:
+    depends_on:
+      workspace-init:
+        condition: service_completed_successfully
     image: bigdata-training/airflow:local
     build:
       context: .
@@ -1276,15 +1313,15 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-formation}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-formation}
     volumes:
-    - ./spark/jobs:/opt/spark/jobs:ro
+    - spark-jobs:/opt/spark/jobs:ro
     - ./spark/conf:/opt/spark/conf:ro
-    - ./data:/opt/spark/data:ro
+    - spark-data:/opt/spark/data:ro
     - ./checks:/checks:ro
     - ./airflow/dags:/opt/airflow/dags:ro
-    - ./reports:/reports
+    - check-reports:/reports
     networks:
     - training-net
-    user: 0:0
+    user: airflow
   dashboard:
     image: python:3.12-slim
     restart: unless-stopped
@@ -1322,7 +1359,7 @@ services:
     - 127.0.0.1:${DASHBOARD_PORT:-8090}:8090
     volumes:
     - ./dashboard:/app:ro
-    - ./reports:/reports:ro
+    - check-reports:/reports:ro
     networks:
     - training-net
   pgadmin-config:
@@ -1354,6 +1391,9 @@ networks:
   training-net:
     driver: bridge
 volumes:
+  spark-data: null
+  spark-jobs: null
+  check-reports: null
   postgres-source-data: null
   kafka-data: null
   objectstore-data: null

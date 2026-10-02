@@ -1,9 +1,0 @@
-WARNING: Using incubator modules: jdk.incubator.vector
-26/10/02 14:09:26 WARN NativeCodeLoader: Unable to load native-hadoop library for your platform... using builtin-java classes where applicable
-26/10/02 14:09:28 WARN MetricsConfig: Cannot locate configuration: tried hadoop-metrics2-s3a-file-system.properties,hadoop-metrics2.properties
-SLF4J: Failed to load class "org.slf4j.impl.StaticLoggerBinder".
-SLF4J: Defaulting to no-operation (NOP) logger implementation
-SLF4J: See http://www.slf4j.org/codes.html#StaticLoggerBinder for further details.
-26/10/02 14:09:29 WARN S3ABlockOutputStream: Application invoked the Syncable API against stream writing to spark-events/eventlog_v2_app-20261002140927-0005/events_1_app-20261002140927-0005.zstd. This is Unsupported
-[Stage 0:>                                                          (0 + 2) / 9][Stage 0:=============>                                             (2 + 2) / 9][Stage 0:==========================>                                (4 + 2) / 9][Stage 0:=======================================>                   (6 + 2) / 9][Stage 0:====================================================>      (8 + 1) / 9]                                                                                [KAFKA] auxiliary records read=343
-[Stage 3:>                                                          (0 + 2) / 9][Stage 3:=============>                                             (2 + 2) / 9][Stage 3:==========================>                                (4 + 2) / 9][Stage 3:=======================================>                   (6 + 2) / 9][Stage 3:====================================================>      (8 + 1) / 9]                                                                                [OK] customers/catalog/OpenData Kafka events landed in Bronze Parquet.

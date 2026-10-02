@@ -69,3 +69,9 @@ RUN set -eux; \
     if python3 -m pip show pyspark-client >/dev/null 2>&1; then echo 'ERROR: pyspark-client must not coexist with full pyspark in this image' >&2; exit 43; else echo 'AIRFLOW_PYSPARK_CLIENT_ABSENT=OK'; fi; \
     python3 -c "import sys, numpy as np; from airflow.providers.apache.spark.operators.spark_submit import SparkSubmitOperator; from pyspark.ml.clustering import KMeans; from pyspark.ml.feature import StandardScaler, VectorAssembler; print('AIRFLOW_SPARK_ML_OK python=' + f'{sys.version_info.major}.{sys.version_info.minor}' + ' numpy=' + np.__version__)"; \
     rm -f /tmp/spark-version.txt
+
+USER root
+RUN mkdir -p /home/spark /opt/spark/data /opt/spark/jobs \
+    && ln -s /opt/spark/data /home/spark/data \
+    && ln -s /opt/spark/jobs /home/spark/jobs
+USER airflow

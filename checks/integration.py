@@ -198,7 +198,7 @@ def main():
  check('Sources existantes -> Kafka',publish_sources)
  check('Kafka producer -> consumer',kafka_roundtrip)
  check('RustFS S3 read/write',s3_roundtrip)
- for name in ['00_runtime_smoke.py','01_batch_to_parquet.py','02_kafka_to_delta.py','03_build_iceberg_gold.py','04_ml_kmeans.py','05_kafka_aux_to_parquet.py','06_kafka_web_logs_to_delta.py','07_delta_web_logs_to_iceberg.py','08_web_logs_ml_kmeans.py','09_verify_existing_data.py']:
+ for name in ['10_verify_workspace_s3.py','00_runtime_smoke.py','01_batch_to_parquet.py','02_kafka_to_delta.py','03_build_iceberg_gold.py','04_ml_kmeans.py','05_kafka_aux_to_parquet.py','06_kafka_web_logs_to_delta.py','07_delta_web_logs_to_iceberg.py','08_web_logs_ml_kmeans.py','09_verify_existing_data.py']:
   check('Spark '+name,lambda name=name:spark_job(name))
  check('Trino -> PostgreSQL + Iceberg + S3',verify_trino)
  def history():

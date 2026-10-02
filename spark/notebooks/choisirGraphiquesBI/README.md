@@ -1,5 +1,5 @@
 # Choisir les graphiques pour une analyse BI
 
-<img src="https://raw.githubusercontent.com/rbizoi/FormationBigDataBI/refs/heads/master/images/bi/comment_choisir.png" width="1024">
+<img src="https://raw.githubusercontent.com/rbizoi/dockerBigDataBI/refs/heads/master/images/bi/comment_choisir.png" width="1024">
 
-<img src="https://raw.githubusercontent.com/rbizoi/FormationBigDataBI/refs/heads/master/images/bi/Synthese_graphiques_BI.png" width="1024">
+<img src="https://raw.githubusercontent.com/rbizoi/dockerBigDataBI/refs/heads/master/images/bi/Synthese_graphiques_BI.png" width="1024">

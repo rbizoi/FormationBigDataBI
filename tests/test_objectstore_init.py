@@ -50,3 +50,33 @@ def test_ensure_and_verify_buckets():
         assert module.MARKER_KEY in client.buckets[bucket]
     for key in module.LAKEHOUSE_PREFIX_MARKERS:
         assert key in client.buckets["lakehouse"]
+
+
+def test_sync_nested_data_idempotent_and_detects_corruption(tmp_path):
+    import io
+    import json
+    import pytest
+
+    class DataS3(FakeS3):
+        def upload_file(self, filename, bucket, key):
+            self.buckets[bucket][key] = Path(filename).read_bytes()
+
+        def get_object(self, Bucket, Key):
+            return {'Body': io.BytesIO(self.buckets[Bucket][Key])}
+
+    (tmp_path / 'input').mkdir()
+    (tmp_path / 'input' / 'sales.csv').write_text('sale_id\n1\n')
+    (tmp_path / 'binary.parquet').write_bytes(bytes(range(256)))
+    client = DataS3()
+    client.create_bucket(Bucket='lakehouse')
+    first = module.sync_data(client, tmp_path)
+    assert set(first) == {'data/input/sales.csv', 'data/binary.parquet'}
+    assert module.sync_data(client, tmp_path) == first
+    assert module.sync_data(client, tmp_path, verify_only=True) == first
+    client.buckets['lakehouse']['data/binary.parquet'] = b'corrupt'
+    with pytest.raises(RuntimeError, match='S3 content mismatch'):
+        module.sync_data(client, tmp_path, verify_only=True)
+    module.sync_data(client, tmp_path)
+    client.buckets['lakehouse']['data-manifest.json'] = json.dumps({}).encode()
+    with pytest.raises(RuntimeError, match='manifest'):
+        module.sync_data(client, tmp_path, verify_only=True)

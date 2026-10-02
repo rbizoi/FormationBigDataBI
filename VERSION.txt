@@ -1,1 +1,1 @@
-7.0.0-portable-druid-superset
+PORTABLE_SPARK_ACCESS_S3_2026-10-02

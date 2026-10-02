@@ -1,5 +1,5 @@
 """Verify DAG parsing and the real Airflow driver -> distributed Spark data path."""
-import json, subprocess, sys
+import json, subprocess, sys, os
 from pathlib import Path
 from datetime import datetime, timezone
 from airflow.models.dagbag import DagBag
@@ -10,8 +10,8 @@ try:
  assert {'bigdata_training_pipeline','web_logs_training_pipeline'} <= set(bag.dags)
  result['checks'].append('DAG imports OK')
  with Path('/reports/airflow-spark.log').open('w') as log:
-  for job in ['00_runtime_smoke.py','09_verify_existing_data.py']:
-   subprocess.run(['spark-submit','--conf','spark.driver.host=airflow-check','--conf','spark.driver.bindAddress=0.0.0.0','/opt/spark/jobs/'+job],check=True,stdout=log,stderr=subprocess.STDOUT,timeout=900)
+  for job in ['10_verify_workspace_s3.py','00_runtime_smoke.py','09_verify_existing_data.py']:
+   subprocess.run(['spark-submit','--conf','spark.driver.host=airflow-check','--conf','spark.driver.bindAddress=0.0.0.0','/opt/spark/jobs/'+job],env=dict(os.environ, WORKSPACE_EXPECT_WRITE="0"),check=True,stdout=log,stderr=subprocess.STDOUT,timeout=900)
  result['checks'].append('Airflow image -> Spark workers -> existing Kafka/S3/Delta/Iceberg data OK')
  result['status']='PASS'
 except Exception as exc:

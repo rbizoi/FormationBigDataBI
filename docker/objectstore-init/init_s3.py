@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import hashlib
+import json
+from pathlib import Path
 import argparse
 import os
 import sys
@@ -93,6 +96,41 @@ def verify_only(client, buckets: Iterable[str]) -> None:
             client.head_object(Bucket="lakehouse", Key=key)
 
 
+def sync_data(client, source: Path, verify_only: bool = False) -> dict:
+    """Upload every source file with its relative path; verify the returned bytes."""
+    if not source.is_dir():
+        raise FileNotFoundError(source)
+    manifest = {}
+    for path in sorted(source.rglob("*")):
+        if path.is_symlink():
+            raise ValueError(f"Symlink in data: {path}")
+        if not path.is_file():
+            continue
+        key = "data/" + path.relative_to(source).as_posix()
+        with path.open('rb') as stream:
+            digest = hashlib.file_digest(stream, 'sha256').hexdigest()
+        if not verify_only:
+            client.upload_file(str(path), "lakehouse", key)
+        received = client.get_object(Bucket="lakehouse", Key=key)["Body"]
+        try:
+            remote_digest = hashlib.file_digest(received, "sha256").hexdigest()
+        finally:
+            received.close()
+        if remote_digest != digest:
+            raise RuntimeError(f"S3 content mismatch: {key}")
+        manifest[key] = {"size": path.stat().st_size, "sha256": digest}
+    if not manifest:
+        raise ValueError("Empty data directory")
+    if not verify_only:
+        client.put_object(Bucket="lakehouse", Key="data-manifest.json",
+                          Body=json.dumps(manifest, sort_keys=True).encode())
+    saved = json.loads(client.get_object(Bucket="lakehouse", Key="data-manifest.json")["Body"].read())
+    if saved != manifest:
+        raise RuntimeError("S3 manifest differs from source data")
+    print(f"S3_DATA_VERIFIED files={len(manifest)}")
+    return manifest
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Initialize and verify the training S3 buckets")
     parser.add_argument("--verify-only", action="store_true")
@@ -108,6 +146,7 @@ def main() -> int:
         ensure_buckets(client, buckets)
         verify_only(client, buckets)
         print("OBJECTSTORE_INIT_OK " + ",".join(buckets))
+    sync_data(client, Path(os.environ["DATA_DIR"]), args.verify_only)
     return 0
 
 

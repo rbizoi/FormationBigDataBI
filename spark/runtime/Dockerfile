@@ -158,3 +158,9 @@ RUN set -eux; \
     python3 -c "import numpy as np; from pyspark.ml.clustering import KMeans; from pyspark.ml.feature import StandardScaler, VectorAssembler; print('FINAL_SPARK_ML_PYTHON_OK numpy=' + np.__version__)"
 
 USER spark
+
+USER root
+RUN mkdir -p /home/spark /opt/spark/data /opt/spark/jobs \
+    && ln -s /opt/spark/data /home/spark/data \
+    && ln -s /opt/spark/jobs /home/spark/jobs
+USER spark
