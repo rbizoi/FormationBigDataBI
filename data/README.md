@@ -16,8 +16,8 @@
 
 <table>
         <tr>                                                                                   
-             <th><img src="https://raw.githubusercontent.com/rbizoi/dockerBigDataBI/refs/heads/master/images/analyse_meteoFrance.png" width="1024"></th>
-             <th><img src="https://raw.githubusercontent.com/rbizoi/dockerBigDataBI/refs/heads/master/images/meteoFrance.png" width="256"></th>
+             <th><img src="https://raw.githubusercontent.com/rbizoi/FormationBigDataBI/refs/heads/master/images/analyse_meteoFrance.png" width="1024"></th>
+             <th><img src="https://raw.githubusercontent.com/rbizoi/FormationBigDataBI/refs/heads/master/images/meteoFrance.png" width="256"></th>
         </tr>    
 </table>
 
@@ -38,7 +38,7 @@ Veuillez vous référer au schéma de données suivant lorsque vous travaillez a
         >>   - `olist_sellers_dataset.csv`<br>
         >>   - `product_category_name_translation.csv`<br>
 
-<img src="https://raw.githubusercontent.com/rbizoi/dockerBigDataBI/refs/heads/master/images/ebrasil.png" width="512">
+<img src="https://raw.githubusercontent.com/rbizoi/FormationBigDataBI/refs/heads/master/images/ebrasil.png" width="512">
 
 # <div style='padding:15px;color:#030aa7;font-size:240%;text-align: center;font-style: italic;font-weight: bold;font-family: Georgia, serif'><a href="https://www.kaggle.com/datasets/eliasdabbas/web-server-access-logs/data">Analyse exploratoire des logs d’un serveur Web</a></div>
 
@@ -52,7 +52,7 @@ Veuillez vous référer au schéma de données suivant lorsque vous travaillez a
 
 <table>
         <tr>                                                                                   
-             <th><img src="https://raw.githubusercontent.com/rbizoi/dockerBigDataBI/refs/heads/master/images/log_web_server.png" width="512"></th>
-             <th><img src="https://raw.githubusercontent.com/rbizoi/dockerBigDataBI/refs/heads/master/images/demarche_log.png" width="256"></th>
+             <th><img src="https://raw.githubusercontent.com/rbizoi/FormationBigDataBI/refs/heads/master/images/log_web_server.png" width="512"></th>
+             <th><img src="https://raw.githubusercontent.com/rbizoi/FormationBigDataBI/refs/heads/master/images/demarche_log.png" width="256"></th>
         </tr>    
 </table>
