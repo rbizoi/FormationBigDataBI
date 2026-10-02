@@ -1,0 +1,27 @@
+WARNING: Using incubator modules: jdk.incubator.vector
+26/10/02 14:03:39 WARN NativeCodeLoader: Unable to load native-hadoop library for your platform... using builtin-java classes where applicable
+ERROR:root:KeyboardInterrupt while sending command.
+Traceback (most recent call last):
+  File "/opt/spark/python/lib/py4j-0.10.9.9-src.zip/py4j/java_gateway.py", line 1038, in send_command
+    response = connection.send_command(command)
+  File "/opt/spark/python/lib/py4j-0.10.9.9-src.zip/py4j/clientserver.py", line 535, in send_command
+    answer = smart_decode(self.stream.readline()[:-1])
+  File "/usr/lib/python3.10/socket.py", line 705, in readinto
+    return self._sock.recv_into(b)
+KeyboardInterrupt
+Traceback (most recent call last):
+  File "/opt/spark/jobs/00_runtime_smoke.py", line 68, in <module>
+    if __name__ == "__main__": main()
+  File "/opt/spark/jobs/00_runtime_smoke.py", line 10, in main
+    spark = SparkSession.builder.appName("bigdata-runtime-smoke").getOrCreate()
+  File "/opt/spark/python/lib/pyspark.zip/pyspark/sql/session.py", line 556, in getOrCreate
+  File "/opt/spark/python/lib/pyspark.zip/pyspark/core/context.py", line 523, in getOrCreate
+  File "/opt/spark/python/lib/pyspark.zip/pyspark/core/context.py", line 207, in __init__
+  File "/opt/spark/python/lib/pyspark.zip/pyspark/core/context.py", line 300, in _do_init
+  File "/opt/spark/python/lib/pyspark.zip/pyspark/core/context.py", line 429, in _initialize_context
+  File "/opt/spark/python/lib/py4j-0.10.9.9-src.zip/py4j/java_gateway.py", line 1626, in __call__
+  File "/opt/spark/python/lib/py4j-0.10.9.9-src.zip/py4j/java_gateway.py", line 1038, in send_command
+  File "/opt/spark/python/lib/py4j-0.10.9.9-src.zip/py4j/clientserver.py", line 535, in send_command
+  File "/usr/lib/python3.10/socket.py", line 705, in readinto
+    return self._sock.recv_into(b)
+KeyboardInterrupt

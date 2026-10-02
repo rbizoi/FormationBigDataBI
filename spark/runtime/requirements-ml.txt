@@ -1,0 +1,15 @@
+# Required by PySpark MLlib DataFrame-based API.
+# No exact package version is imposed here; compatibility is validated at build time.
+numpy
+pandas
+scikit-image
+scikit-learn
+yellowbrick
+lightgbm
+xgboost
+catboost
+optuna
+kneed
+imbalanced-learn
+# Shared by Spark and Airflow: read the existing XLSX training catalogue.
+openpyxl==3.1.5

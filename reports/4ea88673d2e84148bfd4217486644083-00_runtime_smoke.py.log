@@ -1,0 +1,19 @@
+WARNING: Using incubator modules: jdk.incubator.vector
+26/10/02 14:07:15 WARN NativeCodeLoader: Unable to load native-hadoop library for your platform... using builtin-java classes where applicable
+26/10/02 14:07:16 WARN MetricsConfig: Cannot locate configuration: tried hadoop-metrics2-s3a-file-system.properties,hadoop-metrics2.properties
+SLF4J: Failed to load class "org.slf4j.impl.StaticLoggerBinder".
+SLF4J: Defaulting to no-operation (NOP) logger implementation
+SLF4J: See http://www.slf4j.org/codes.html#StaticLoggerBinder for further details.
+26/10/02 14:07:18 WARN S3ABlockOutputStream: Application invoked the Syncable API against stream writing to spark-events/eventlog_v2_app-20261002140716-0000/events_1_app-20261002140716-0000.zstd. This is Unsupported
+SPARK_IMPORTED_CONFIG_OK
+PYTHON_DRIVER_VERSION=3.10
+PYTHON_DRIVER_EXECUTABLE=/usr/bin/python3
+[Stage 0:>                                                          (0 + 2) / 4]                                                                                PYTHON_WORKER_VERSIONS=3.10
+PYTHON_WORKER_EXECUTABLES=/usr/bin/python3
+PYTHON_WORKER_HOSTS=spark-worker-1,spark-worker-2
+PYTHON_RUNTIME_PARITY_OK
+[Stage 1:>                                                          (0 + 2) / 4][Stage 1:=============================>                             (2 + 2) / 4]                                                                                [Stage 6:>                                                          (0 + 2) / 4][Stage 6:=============================>                             (2 + 2) / 4]                                                                                26/10/02 14:07:31 WARN SparkStringUtils: Truncated the string representation of a plan since it was too large. This behavior can be adjusted by setting 'spark.sql.debug.maxToStringFields'.
+[Stage 9:>                                                         (0 + 2) / 50][Stage 9:==>                                                       (2 + 2) / 50][Stage 9:======>                                                   (6 + 2) / 50][Stage 9:=============>                                           (12 + 3) / 50][Stage 9:======================>                                  (20 + 2) / 50][Stage 9:===============================>                         (28 + 2) / 50][Stage 9:=========================================>               (36 + 2) / 50][Stage 9:====================================================>    (46 + 2) / 50]                                                                                [Stage 13:>                                                         (0 + 2) / 4][Stage 13:==============>                                           (1 + 2) / 4][Stage 13:=============================>                            (2 + 2) / 4]                                                                                SMOKE_PARQUET_COUNT=3
+SMOKE_DELTA_COUNT=3
+SMOKE_ICEBERG_COUNT=3
+SMOKE_RUNTIME_OK

@@ -1,0 +1,5 @@
+Docker Compose 2.39.4: core/full/full+checks config validated.
+Python syntax, mount paths, dependencies, acyclic graph, localhost port binding and existing datasets: passed.
+Portal render: 16 interfaces and custom ports passed.
+No Docker daemon: image builds and runtime integrations NOT executed here.
+Existing S3 bootstrap unit tests: 2 passed.

@@ -1,0 +1,8 @@
+{
+  "finished_at": "2026-10-02T14:03:47.198787+00:00",
+  "status": "FAIL",
+  "checks": [
+    "DAG imports OK"
+  ],
+  "error": "Command '['spark-submit', '--conf', 'spark.driver.host=airflow-check', '--conf', 'spark.driver.bindAddress=0.0.0.0', '/opt/spark/jobs/00_runtime_smoke.py']' returned non-zero exit status 1."
+}
