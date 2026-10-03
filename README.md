@@ -1,6 +1,7 @@
 <img src="https://raw.githubusercontent.com/rbizoi/FormationBigDataBI/refs/heads/master/images/architecture.png" width="1024">
 
-# Docker formation Big Data et BI — Windows et Linux
+# Docker formation Big Data et BI
+`Windows` et `Linux`
 
 Laboratoire pédagogique utilisable avec **les mêmes commandes Docker** sous Windows (Docker Desktop en mode conteneurs Linux / WSL2) et Linux (Docker Engine + Compose v2, ou Docker Desktop). Aucun script Shell, PowerShell ou CMD à exécuter ; Python et les dépendances tournent dans les conteneurs.
 
