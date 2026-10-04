@@ -150,7 +150,7 @@ def creationParquetEbrasil(rep_source, rep_dest):
                         payments.value_not_defined + \
                         payments.value_voucher
 
-    payments.to_parquet(os.path.join(rep_dest, 'payments.parquet'), compression='gzip', engine='pyarrow')
+    payments.reset_index().to_parquet(os.path.join(rep_dest, 'payments.parquet'), compression='gzip', engine='pyarrow')
     assert controleFichier(fichier=os.path.join(rep_dest, 'payments.parquet'))
     # 5. DataFrame $reviews$
     donnees = lectureFichier(listeFichiers['order_reviews'], rep_source)
