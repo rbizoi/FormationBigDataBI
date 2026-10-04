@@ -205,6 +205,11 @@ def main():
   apps=request('GET','http://spark-history:18080/api/v1/applications').json();assert apps;return len(apps)
  check('Spark event logs S3 -> History',lambda:retry(history,180))
  if args.full:
+  def timescale_data():
+   sys.path.insert(0, '/timescale')
+   from check_meteo import verify
+   return verify('/timescale-data/meteo.gzip')
+  check('Parquet météo -> TimescaleDB (toutes les lignes et colonnes)',timescale_data)
   for name,url in [('Airflow','http://airflow:8080/api/v2/monitor/health'),('Kibana','http://kibana:5601/api/status'),('Druid console','http://druid-router:8888'),('Superset','http://superset:8088/health'),('OpenData API','http://mock-opendata:8000/api/events')]:check(name,lambda url=url:retry(lambda:http(url),300))
   check('OpenData API -> api-producer -> Kafka',verify_opendata_api)
   check('Kafka -> Logstash -> Elasticsearch',verify_elastic)

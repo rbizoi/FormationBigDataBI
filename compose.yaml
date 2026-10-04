@@ -1,5 +1,75 @@
 name: bigdata-training
 services:
+  timescaledb:
+    image: timescale/timescaledb:2.30.2-pg17@sha256:b346edcdb51a1fd6020e3965e0bd1c9f3406fa6d5fbce1e28f4852587ef934e2
+    profiles: [timeseries, full, checks]
+    restart: unless-stopped
+    mem_limit: 1g
+    environment:
+      POSTGRES_DB: ${TIMESCALE_DB:-meteo}
+      POSTGRES_USER: ${TIMESCALE_USER:-meteo}
+      POSTGRES_PASSWORD: ${TIMESCALE_PASSWORD:-formation}
+      TIMESCALEDB_TELEMETRY: 'off'
+      TS_TUNE_MEMORY: 1GB
+      TS_TUNE_NUM_CPUS: '2'
+    ports:
+    - 127.0.0.1:${TIMESCALE_PORT:-5433}:5432
+    volumes:
+    - timescaledb-data:/var/lib/postgresql/data
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"']
+      interval: 5s
+      timeout: 5s
+      retries: 60
+      start_period: 20s
+    networks: [training-net]
+  timescale-reports-init:
+    image: python:3.12-slim
+    profiles: [timeseries, full, checks]
+    user: 0:0
+    restart: 'no'
+    entrypoint: [python, -c]
+    command: ["import os; os.chown('/reports',10001,0); os.chmod('/reports',0o2775)"]
+    volumes:
+    - timescale-reports:/reports
+    networks: [training-net]
+  timescale-load:
+    image: bigdata-training/timescale-loader:local
+    build:
+      context: ./docker/timescale-load
+    profiles: [timeseries, full]
+    restart: 'no'
+    mem_limit: 512m
+    environment: &timescale-loader-env
+      PGHOST: timescaledb
+      PGPORT: '5432'
+      PGDATABASE: ${TIMESCALE_DB:-meteo}
+      PGUSER: ${TIMESCALE_USER:-meteo}
+      PGPASSWORD: ${TIMESCALE_PASSWORD:-formation}
+    volumes:
+    - ./data/meteo.gzip:/data/meteo.gzip:ro
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+    networks: [training-net]
+  timescale-check:
+    image: bigdata-training/timescale-loader:local
+    build:
+      context: ./docker/timescale-load
+    profiles: [checks]
+    restart: 'no'
+    mem_limit: 512m
+    entrypoint: [python, /app/check_meteo.py]
+    environment: *timescale-loader-env
+    volumes:
+    - ./data/meteo.gzip:/data/meteo.gzip:ro
+    - timescale-reports:/reports
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+      timescale-reports-init:
+        condition: service_completed_successfully
+    networks: [training-net]
   workspace-init:
     image: bigdata-training/spark-runtime:local
     build:
@@ -1256,6 +1326,10 @@ services:
     - python3
     - /checks/integration.py
     environment:
+      PGHOST: timescaledb
+      PGDATABASE: ${TIMESCALE_DB:-meteo}
+      PGUSER: ${TIMESCALE_USER:-meteo}
+      PGPASSWORD: ${TIMESCALE_PASSWORD:-formation}
       AWS_ACCESS_KEY_ID: ${S3_ACCESS_KEY:-labadmin}
       AWS_SECRET_ACCESS_KEY: ${S3_SECRET_KEY:-TRAINING_ONLY_S3_PASSWORD}
       AWS_REGION: ${AWS_REGION:-us-east-1}
@@ -1277,6 +1351,8 @@ services:
     - spark-jobs:/opt/spark/jobs
     - spark-data:/opt/spark/data
     - ./checks:/checks:ro
+    - ./docker/timescale-load:/timescale:ro
+    - ./data/meteo.gzip:/timescale-data/meteo.gzip:ro
     - check-reports:/reports
     - ./docker:/producers:ro
     networks:
@@ -1329,6 +1405,9 @@ services:
     - python
     - /app/server.py
     environment:
+      TIMESCALE_DB: ${TIMESCALE_DB:-meteo}
+      TIMESCALE_USER: ${TIMESCALE_USER:-meteo}
+      TIMESCALE_PASSWORD: ${TIMESCALE_PASSWORD:-formation}
       POSTGRES_DB: ${POSTGRES_DB:-formation}
       POSTGRES_USER: ${POSTGRES_USER:-formation}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-formation}
@@ -1360,6 +1439,7 @@ services:
     volumes:
     - ./dashboard:/app:ro
     - check-reports:/reports:ro
+    - timescale-reports:/timescale-reports:ro
     networks:
     - training-net
   pgadmin-config:
@@ -1369,6 +1449,9 @@ services:
     - python
     - /init/pgadmin.py
     environment:
+      TIMESCALE_DB: ${TIMESCALE_DB:-meteo}
+      TIMESCALE_USER: ${TIMESCALE_USER:-meteo}
+      TIMESCALE_PASSWORD: ${TIMESCALE_PASSWORD:-formation}
       POSTGRES_USER: ${POSTGRES_USER:-formation}
       POSTGRES_DB: ${POSTGRES_DB:-formation}
     volumes:
@@ -1391,6 +1474,8 @@ networks:
   training-net:
     driver: bridge
 volumes:
+  timescaledb-data: null
+  timescale-reports: null
   spark-data: null
   spark-jobs: null
   check-reports: null

@@ -1,0 +1,65 @@
+name: TimescaleDB meteo integration
+on:
+  push:
+    branches: [master]
+    paths: ['compose.yaml', 'docker/timescale-load/**', 'docker/bootstrap/pgadmin.py', 'dashboard/**', 'tests/**', 'tools/**', 'data/meteo.gzip', '.github/workflows/timescaledb.yml']
+  pull_request:
+    paths: ['compose.yaml', 'docker/timescale-load/**', 'docker/bootstrap/pgadmin.py', 'dashboard/**', 'tests/**', 'tools/**', 'data/meteo.gzip', '.github/workflows/timescaledb.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  meteo:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install test dependencies
+        run: python -m pip install -r docker/timescale-load/requirements.txt pytest PyYAML boto3
+      - name: Offline contracts and unit tests
+        run: |
+          python tools/static_validate.py
+          python -m pytest -q tests
+          docker compose --profile full --profile checks config --quiet
+      - name: Start TimescaleDB and the graphical management interface
+        run: docker compose --profile timeseries up -d --wait timescaledb pgadmin dashboard
+      - name: Verify pgAdmin server registration and portal card
+        run: |
+          curl --fail --retry 20 --retry-all-errors --retry-delay 3 http://localhost:5050/misc/ping
+          docker compose exec -T pgadmin /venv/bin/python3 -c "import sqlite3; db=sqlite3.connect('/var/lib/pgadmin/pgadmin4.db'); assert db.execute('select count(*) from server where host=?', ('timescaledb',)).fetchone()[0] >= 1"
+          python -c "import urllib.request; page=urllib.request.urlopen('http://localhost:8090').read().decode(); assert 'TimescaleDB météo' in page and 'timescaledb:5432' in page"
+      - name: Real database edge cases and transaction rollback
+        env:
+          TIMESCALE_INTEGRATION_TEST: '1'
+          PGHOST: localhost
+          PGPORT: '5433'
+          PGDATABASE: meteo
+          PGUSER: meteo
+          PGPASSWORD: formation
+        run: python -m pytest -q tests/test_timescale.py
+      - name: Load all existing Parquet observations
+        run: docker compose --profile timeseries run --build --rm timescale-load
+      - name: Compare every imported field with the original Parquet
+        run: docker compose --profile checks run --rm timescale-check
+      - name: Reload the same full source and verify idempotence
+        run: |
+          docker compose --profile timeseries run --rm timescale-load
+          docker compose --profile checks run --rm timescale-check
+      - name: Export verification report
+        if: always()
+        run: |
+          docker compose --profile checks run --rm --entrypoint python timescale-check -c "from pathlib import Path; print(Path('/reports/timescale-check.json').read_text())" > timescale-check.json
+          docker compose --profile timeseries logs --no-color timescaledb > timescaledb.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: timescale-meteo-verification
+          path: |
+            timescale-check.json
+            timescaledb.log
+      - name: Remove CI containers and volumes
+        if: always()
+        run: docker compose --profile '*' down --volumes --remove-orphans

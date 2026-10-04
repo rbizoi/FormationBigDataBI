@@ -190,3 +190,28 @@ Validation de cette révision : contrats statiques et tests Python exécutés.
 Construction et démarrage Docker non exécutés dans l'environnement de création,
 qui ne dispose pas du moteur Docker. Les commandes d'intégration ci-dessus
 restent nécessaires sur la machine de formation.
+
+## TimescaleDB et données météo
+
+TimescaleDB est disponible avec les profils `timeseries` et `full`. La carte
+**TimescaleDB météo · pgAdmin** du portail ouvre pgAdmin avec le serveur
+`timescaledb:5432` préenregistré (base/utilisateur `meteo`, mot de passe pédagogique
+`formation`). Le port SQL depuis l'hôte est `5433`.
+
+Le service `timescale-load` charge les **3 591 621 observations et 24 colonnes**
+du fichier Parquet `data/meteo.gzip` dans `meteo.observations`, une hypertable
+partitionnée par mois. Le chargement est transactionnel et peut être relancé.
+
+```text
+docker compose --profile timeseries build timescale-load
+docker compose --profile timeseries up -d timescaledb pgadmin dashboard
+docker compose run --rm pgadmin-config
+docker compose up -d --force-recreate pgadmin dashboard
+docker compose --profile timeseries run --rm timescale-load
+docker compose --profile checks run --rm timescale-check
+```
+
+Le contrôle compare toutes les lignes et colonnes au fichier d'origine ; le
+rapport est affiché dans le portail. Pour la procédure complète, les paramètres,
+le mapping des colonnes et les requêtes SQL, consulter
+[TimescaleDB_Meteo.md](docs/TimescaleDB_Meteo.md).

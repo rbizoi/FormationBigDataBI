@@ -3,6 +3,7 @@ import html, json, os
 from pathlib import Path
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 PRODUCTS = [
+ ('TimescaleDB météo · pgAdmin','PGADMIN_PORT',5050,'PGADMIN_EMAIL','PGADMIN_PASSWORD','Dans pgAdmin, ouvrir le serveur « TimescaleDB météo ». Hôte timescaledb:5432 ; base {TIMESCALE_DB} ; utilisateur SQL {TIMESCALE_USER} ; mot de passe SQL {TIMESCALE_PASSWORD}. Profil timeseries ou full.'),
  ('PostgreSQL · pgAdmin','PGADMIN_PORT',5050,'PGADMIN_EMAIL','PGADMIN_PASSWORD','Serveur SQL postgres-source:5432. Base {POSTGRES_DB} ; utilisateur SQL {POSTGRES_USER} ; mot de passe SQL {POSTGRES_PASSWORD}.'),
  ('Kafka UI','KAFKA_UI_PORT',8086,'','','Topics, messages et consommateurs.'),
  ('RustFS · S3','S3_CONSOLE_PORT',9001,'S3_ACCESS_KEY','S3_SECRET_KEY','Buckets Parquet, Delta, Iceberg et Druid.'),
@@ -27,8 +28,8 @@ def render():
   esc=html.escape
   cards.append(f'<article><h2>{esc(name)}</h2><p>{esc(description.format_map(os.environ))}</p><dl><dt>Utilisateur</dt><dd>{esc(os.getenv(user,"Sans compte"))}</dd><dt>{"Token" if secret=="JUPYTER_TOKEN" else "Mot de passe"}</dt><dd><code>{esc(os.getenv(secret,"Aucun"))}</code></dd></dl><a href="{url}" target="_blank" rel="noopener">Ouvrir ↗</a><small>{url}</small></article>')
  reports=[]
- for filename in ['integration.json','airflow-check.json']:
-  path=Path('/reports')/filename
+ for directory,filename in [('/reports','integration.json'),('/reports','airflow-check.json'),('/timescale-reports','timescale-check.json')]:
+  path=Path(directory)/filename
   if path.exists():
    try: reports.append('<h3>'+filename+'</h3><pre>'+html.escape(json.dumps(json.loads(path.read_text()),ensure_ascii=False,indent=2))+'</pre>')
    except (ValueError,OSError): reports.append('<p>Rapport illisible.</p>')
