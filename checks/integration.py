@@ -34,7 +34,11 @@ def check(name,fn):
   RESULTS.append({'test':name,'status':'FAIL','detail':str(exc),'seconds':round(time.monotonic()-start,2)})
  print(json.dumps(RESULTS[-1],ensure_ascii=False),flush=True)
 
-def http(url):return request('GET',url).status_code
+def http(url):
+ response=request('GET',url)
+ if url=='http://trino:8080/v1/info' and response.json().get('starting',True):
+  raise RuntimeError('Trino is still starting; SQL catalogs are not ready')
+ return response.status_code
 
 def trino(sql):
  r=request('POST','http://trino:8080/v1/statement',data=sql,headers={'X-Trino-User':'formation'}).json(); rows=[]

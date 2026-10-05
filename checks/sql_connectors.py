@@ -28,6 +28,15 @@ def query(sql):
 
 
 if __name__ == '__main__':
+    deadline = time.monotonic()+120
+    while True:
+        try:
+            assert query('SELECT 1') == [[1]]
+            break
+        except Exception:
+            if time.monotonic() >= deadline:
+                raise
+            time.sleep(2)
     assert query('SELECT count(*) FROM postgresql.public.customers')[0][0] >= 5
     query('CREATE SCHEMA IF NOT EXISTS iceberg.ci')
     query('DROP TABLE IF EXISTS iceberg.ci.integration_sales')

@@ -43,3 +43,19 @@ def test_portal_pgadmin_and_checks_match_remaining_stack(monkeypatch):
     assert not any(term in source.lower() for term in REMOVED)
     for function in ['verify_trino','verify_druid','verify_superset','kafka_roundtrip','s3_roundtrip']:
         assert 'def '+function+'(' in source
+
+
+def test_trino_http_200_during_startup_is_not_ready():
+    from types import SimpleNamespace
+    import pytest
+    tree=ast.parse((ROOT/'checks/integration.py').read_text())
+    function=next(node for node in tree.body if isinstance(node,ast.FunctionDef) and node.name=='http')
+    state={'starting':True}
+    namespace={'request':lambda *args:SimpleNamespace(status_code=200,json=lambda:state)}
+    exec(compile(ast.Module(body=[function],type_ignores=[]),'<readiness>','exec'),namespace)
+    with pytest.raises(RuntimeError,match='still starting'):
+        namespace['http']('http://trino:8080/v1/info')
+    state['starting']=False
+    assert namespace['http']('http://trino:8080/v1/info')==200
+    health=yaml.safe_load((ROOT/'compose.yaml').read_text())['services']['trino']['healthcheck']['test'][-1]
+    assert 'starting' in health and 'false' in health
