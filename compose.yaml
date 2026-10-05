@@ -667,7 +667,6 @@ services:
       context: ./docker/file-producer
     profiles:
     - seed
-    - full
     restart: 'no'
     mem_limit: 384m
     depends_on:
@@ -686,7 +685,6 @@ services:
       context: ./docker/postgres-producer
     profiles:
     - seed
-    - full
     restart: 'no'
     mem_limit: 256m
     depends_on:
@@ -709,7 +707,6 @@ services:
       context: ./docker/web-log-producer
     profiles:
     - logs
-    - full
     restart: 'no'
     mem_limit: 256m
     depends_on:

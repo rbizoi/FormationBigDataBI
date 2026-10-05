@@ -1,6 +1,6 @@
 # Formation Big Data et Business Intelligence
 
-Plateforme pédagogique Docker Compose pour Windows (Docker Desktop/WSL2), Linux et macOS. Le projet Compose est nommé **bigdata-training**. Le profil **full** démarre tous les composants de formation, y compris les producteurs de données et de logs ; les outils du profil **checks** s'exécutent séparément.
+Plateforme pédagogique Docker Compose pour Windows (Docker Desktop/WSL2), Linux et macOS. Le projet Compose est nommé **bigdata-training**. Le profil **full** démarre les serveurs de formation et le producteur API continu. Les producteurs fichiers, SQL et logs sont des tâches à exécution unique : le test d’intégration les exécute automatiquement ; ils peuvent aussi être lancés séparément avec `run --rm`. Les outils du profil **checks** s’exécutent séparément.
 
 Les données du dépôt sont dans **`donnees/`**. Les chemins internes Spark `/opt/spark/data` et `/home/spark/data` restent inchangés et accessibles à l'utilisateur `spark`. Airflow les monte en lecture seule. L'initialisation copie les fichiers dans les volumes Spark et dans **`s3://lakehouse/donnees/`**, avec un manifeste SHA-256 `donnees-manifest.json`. Les fichiers météo restent disponibles pour les notebooks ; aucun serveur SQL météo spécifique n'est installé.
 
@@ -25,8 +25,8 @@ Toutes les commandes suivantes s'exécutent à la racine du dépôt. **Toujours 
 docker compose --env-file .env --env-file ports.env --profile full --profile checks config --quiet
 
 # Télécharger les images et construire les images locales, outils de test compris
-docker compose --env-file .env --env-file ports.env --profile full --profile checks pull --ignore-buildable
-docker compose --env-file .env --env-file ports.env --profile full --profile checks build
+docker compose --env-file .env --env-file ports.env --profile full --profile seed --profile logs --profile checks pull --ignore-buildable
+docker compose --env-file .env --env-file ports.env --profile full --profile seed --profile logs --profile checks build
 
 # Vérifier les ports sur le moteur Docker réel
 docker compose --env-file .env --env-file ports.env run --rm ports-check
@@ -40,7 +40,7 @@ docker compose --env-file .env --env-file ports.env --profile full ps -a
 
 Le contrôle des ports est aussi une dépendance automatique des services qui publient un port. Il détecte les collisions internes et les ports occupés par d'autres conteneurs ou processus. Si un port est occupé, modifier la variable correspondante dans `ports.env`, puis relancer. Les ports internes entre services ne doivent pas être changés pour résoudre une collision sur l'hôte.
 
-Les services d'initialisation et les producteurs de fichiers sont à exécution unique : **Exited (0)** est normal. Pour les serveurs, attendre **running**, et **healthy** lorsqu'un healthcheck est configuré. `--wait` ne prouve pas l'intégration fonctionnelle : exécuter les contrôles de la section 5.
+Les services d’initialisation sont à exécution unique : **Exited (0)** est normal. Chaque initialisation du profil full est attendue par une dépendance `service_completed_successfully`. Les producteurs fichiers, SQL et logs sont exclus de `up --wait`, car leur sortie normale peut faire échouer cette attente. Pour les serveurs, attendre **running**, et **healthy** lorsqu'un healthcheck est configuré. `--wait` ne prouve pas l'intégration fonctionnelle : exécuter les contrôles de la section 5.
 
 Portail : **http://localhost:25021**. Les comptes et tokens actifs sont affichés dans les cartes du portail ; les identifiants proviennent de `.env`.
 
@@ -127,6 +127,18 @@ Les rapports `integration.json`, `airflow-check.json`, `ports-check.json` et les
 
 Pour le cœur seulement, démarrer sans `--profile full` et exécuter `integration-check` sans `--full`. Le contrôle Airflow nécessite son profil. Les tests unitaires de maintenance s'exécutent avec `python -m pytest -q tests` après installation de `pytest`, `PyYAML` et `boto3`.
 
+### Exécuter les producteurs ponctuels séparément
+
+Le contrôle d’intégration les lance automatiquement. Pour un exercice manuel, après le démarrage des serveurs :
+
+```bash
+docker compose --env-file .env --env-file ports.env --profile seed run --rm file-producer
+docker compose --env-file .env --env-file ports.env --profile seed run --rm postgres-producer
+docker compose --env-file .env --env-file ports.env --profile logs run --rm web-log-producer
+```
+
+Une sortie `0` signifie que la tâche a réussi. Ne pas ajouter `--profile seed` ou `--profile logs` à `up --wait` : ces tâches terminent normalement au lieu de rester actives.
+
 ## 6. Arrêter, redémarrer, reconstruire
 
 ```bash
@@ -137,7 +149,7 @@ docker compose --env-file .env --env-file ports.env --profile full stop
 docker compose --env-file .env --env-file ports.env --profile full start
 
 # Relancer après un changement de configuration ou de code
-docker compose --env-file .env --env-file ports.env --profile full --profile checks build
+docker compose --env-file .env --env-file ports.env --profile full --profile seed --profile logs --profile checks build
 docker compose --env-file .env --env-file ports.env --profile full up -d --remove-orphans --wait --wait-timeout 900
 
 # Redémarrer un serveur, par exemple Trino
@@ -180,7 +192,7 @@ Si le dépôt contient des modifications locales, les sauvegarder avant `git pul
 ```bash
 docker compose --env-file .env --env-file ports.env --profile '*' down --remove-orphans
 git pull --ff-only
-docker compose --env-file .env --env-file ports.env --profile full --profile checks build
+docker compose --env-file .env --env-file ports.env --profile full --profile seed --profile logs --profile checks build
 docker compose --env-file .env --env-file ports.env --profile full up -d --remove-orphans --wait --wait-timeout 900
 ```
 

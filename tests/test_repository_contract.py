@@ -59,3 +59,20 @@ def test_trino_http_200_during_startup_is_not_ready():
     assert namespace['http']('http://trino:8080/v1/info')==200
     health=yaml.safe_load((ROOT/'compose.yaml').read_text())['services']['trino']['healthcheck']['test'][-1]
     assert 'starting' in health and 'false' in health
+
+
+def test_full_wait_has_no_unconsumed_one_shot_producers():
+    services=yaml.safe_load((ROOT/'compose.yaml').read_text())['services']
+    active={name:definition for name,definition in services.items()
+            if not definition.get('profiles') or 'full' in definition['profiles']}
+    completed={dependency for definition in active.values()
+               for dependency,condition in definition.get('depends_on',{}).items()
+               if condition['condition']=='service_completed_successfully'}
+    for name,definition in active.items():
+        if definition.get('restart')=='no':
+            assert name in completed, f'{name} would exit during up --wait without a completion dependency'
+    for name in ['file-producer','postgres-producer','web-log-producer']:
+        assert name not in active
+        assert 'full' not in services[name]['profiles']
+    source=(ROOT/'checks/integration.py').read_text()
+    assert "['file-producer','postgres-producer','web-log-producer']" in source
