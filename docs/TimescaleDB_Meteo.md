@@ -11,24 +11,24 @@ Les mêmes commandes fonctionnent sur les deux systèmes, sans script shell ou P
 Depuis le dossier contenant `compose.yaml` :
 
 ```text
-docker compose --profile full --profile checks config --quiet
-docker compose --profile timeseries build timescale-load
-docker compose --profile timeseries up -d timescaledb pgadmin dashboard
-docker compose run --rm pgadmin-config
-docker compose up -d --force-recreate pgadmin dashboard
-docker compose --profile timeseries run --rm timescale-load
-docker compose --profile checks run --rm timescale-check
+docker compose --env-file .env --env-file ports.env --profile full --profile checks config --quiet
+docker compose --env-file .env --env-file ports.env --profile timeseries build timescale-load
+docker compose --env-file .env --env-file ports.env --profile timeseries up -d timescaledb pgadmin dashboard
+docker compose --env-file .env --env-file ports.env run --rm pgadmin-config
+docker compose --env-file .env --env-file ports.env up -d --force-recreate pgadmin dashboard
+docker compose --env-file .env --env-file ports.env --profile timeseries run --rm timescale-load
+docker compose --env-file .env --env-file ports.env --profile checks run --rm timescale-check
 ```
 
 Les deux commandes `pgadmin-config`/recréation actualisent aussi un pgAdmin déjà
 installé. Pour une nouvelle installation complète, utiliser le profil `full` :
 
 ```text
-docker compose --profile full --profile checks build
-docker compose --profile full up -d
-docker compose --profile full ps -a
-docker compose logs -f timescale-load
-docker compose --profile checks run --rm timescale-check
+docker compose --env-file .env --env-file ports.env --profile full --profile checks build
+docker compose --env-file .env --env-file ports.env --profile full up -d
+docker compose --env-file .env --env-file ports.env --profile full ps -a
+docker compose --env-file .env --env-file ports.env logs -f timescale-load
+docker compose --env-file .env --env-file ports.env --profile checks run --rm timescale-check
 ```
 
 Le service `timescale-load` charge automatiquement le fichier lors d'un démarrage
@@ -38,18 +38,18 @@ plusieurs minutes et plusieurs Go de stockage. Aucun volume existant n'est suppr
 
 ## Interface graphique et accès
 
-Depuis le portail http://localhost:8090, ouvrir la carte **TimescaleDB météo · pgAdmin**.
+Depuis le portail http://localhost:25021, ouvrir la carte **TimescaleDB météo · pgAdmin**.
 Dans pgAdmin, développer **Formation → TimescaleDB météo**. L'interface est partagée
 avec PostgreSQL ; le deuxième serveur est préenregistré.
 
 | Paramètre | Valeur pédagogique par défaut |
 |---|---|
-| URL de pgAdmin | http://localhost:5050 |
+| URL de pgAdmin | http://localhost:25017 |
 | Compte de l'interface | admin@formation.fr |
 | Mot de passe de l'interface | formation |
 | Hôte SQL dans le réseau Docker | timescaledb |
 | Port SQL dans Docker | 5432 |
-| Hôte/port SQL depuis l'ordinateur | localhost:5433 |
+| Hôte/port SQL depuis l'ordinateur | localhost:25000 |
 | Base et utilisateur SQL | meteo |
 | Mot de passe SQL demandé par pgAdmin | formation |
 | Schéma / hypertable | meteo.observations |
@@ -130,8 +130,8 @@ concurrents de la même source.
 Relancer après une modification du fichier :
 
 ```text
-docker compose --profile timeseries run --rm timescale-load
-docker compose --profile checks run --rm timescale-check
+docker compose --env-file .env --env-file ports.env --profile timeseries run --rm timescale-load
+docker compose --env-file .env --env-file ports.env --profile checks run --rm timescale-check
 ```
 
 ## Contrôle et rapports

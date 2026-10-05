@@ -1,6 +1,44 @@
 name: bigdata-training
 services:
+  ports-check:
+    image: bigdata-training/ports-check:local
+    build:
+      context: ./docker/ports-check
+    restart: 'no'
+    user: 0:0
+    environment:
+      TIMESCALE_PORT: ${TIMESCALE_PORT:-25000}
+      POSTGRES_PORT: ${POSTGRES_PORT:-25001}
+      KAFKA_EXTERNAL_PORT: ${KAFKA_EXTERNAL_PORT:-25002}
+      S3_API_PORT: ${S3_API_PORT:-25003}
+      S3_CONSOLE_PORT: ${S3_CONSOLE_PORT:-25004}
+      ICEBERG_REST_PORT: ${ICEBERG_REST_PORT:-25005}
+      SPARK_MASTER_UI_PORT: ${SPARK_MASTER_UI_PORT:-25006}
+      SPARK_WORKER1_UI_PORT: ${SPARK_WORKER1_UI_PORT:-25007}
+      SPARK_WORKER2_UI_PORT: ${SPARK_WORKER2_UI_PORT:-25008}
+      SPARK_HISTORY_UI_PORT: ${SPARK_HISTORY_UI_PORT:-25009}
+      JUPYTER_PORT: ${JUPYTER_PORT:-25010}
+      SPARK_JOBS_UI_PORT: ${SPARK_JOBS_UI_PORT:-25011}
+      TRINO_PORT: ${TRINO_PORT:-25012}
+      MOCK_OPENDATA_PORT: ${MOCK_OPENDATA_PORT:-25013}
+      AIRFLOW_PORT: ${AIRFLOW_PORT:-25014}
+      ELASTICSEARCH_PORT: ${ELASTICSEARCH_PORT:-25015}
+      KIBANA_PORT: ${KIBANA_PORT:-25016}
+      PGADMIN_PORT: ${PGADMIN_PORT:-25017}
+      KAFKA_UI_PORT: ${KAFKA_UI_PORT:-25018}
+      DRUID_PORT: ${DRUID_PORT:-25019}
+      SUPERSET_PORT: ${SUPERSET_PORT:-25020}
+      DASHBOARD_PORT: ${DASHBOARD_PORT:-25021}
+      COMPOSE_PROJECT_NAME: ${COMPOSE_PROJECT_NAME:-bigdata-training}
+    volumes:
+    - .:/project:ro
+    - /var/run/docker.sock:/var/run/docker.sock
+    - check-reports:/reports
+    networks: [training-net]
   timescaledb:
+    depends_on:
+      ports-check:
+        condition: service_completed_successfully
     image: timescale/timescaledb:2.30.2-pg17@sha256:b346edcdb51a1fd6020e3965e0bd1c9f3406fa6d5fbce1e28f4852587ef934e2
     profiles: [timeseries, full, checks]
     restart: unless-stopped
@@ -13,7 +51,7 @@ services:
       TS_TUNE_MEMORY: 1GB
       TS_TUNE_NUM_CPUS: '2'
     ports:
-    - 127.0.0.1:${TIMESCALE_PORT:-5433}:5432
+    - 127.0.0.1:${TIMESCALE_PORT:-25000}:5432
     volumes:
     - timescaledb-data:/var/lib/postgresql/data
     healthcheck:
@@ -87,6 +125,9 @@ services:
     - check-reports:/reports
     networks: [training-net]
   postgres-source:
+    depends_on:
+      ports-check:
+        condition: service_completed_successfully
     image: postgres:17.11-alpine
     restart: unless-stopped
     mem_limit: 768m
@@ -95,7 +136,7 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-formation}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-formation}
     ports:
-    - 127.0.0.1:${POSTGRES_PORT:-5432}:5432
+    - 127.0.0.1:${POSTGRES_PORT:-25001}:5432
     volumes:
     - postgres-source-data:/var/lib/postgresql/data
     - ./postgres/init:/docker-entrypoint-initdb.d:ro
@@ -144,6 +185,9 @@ services:
     networks:
     - training-net
   kafka:
+    depends_on:
+      ports-check:
+        condition: service_completed_successfully
     image: apache/kafka:4.3.1
     restart: unless-stopped
     mem_limit: 1g
@@ -155,7 +199,7 @@ services:
       KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
       KAFKA_LISTENERS: PLAINTEXT://:19092,CONTROLLER://:9093,PLAINTEXT_HOST://:9092
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:19092,PLAINTEXT_HOST://localhost:${KAFKA_EXTERNAL_PORT:-29092}
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:19092,PLAINTEXT_HOST://localhost:${KAFKA_EXTERNAL_PORT:-25002}
       KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
       CLUSTER_ID: ${KAFKA_CLUSTER_ID:-4L6g3nShT-eMCtK--X86sw}
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
@@ -166,7 +210,7 @@ services:
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
       KAFKA_LOG_DIRS: /var/lib/kafka/data
     ports:
-    - 127.0.0.1:${KAFKA_EXTERNAL_PORT:-29092}:9092
+    - 127.0.0.1:${KAFKA_EXTERNAL_PORT:-25002}:9092
     volumes:
     - kafka-data:/var/lib/kafka/data
     healthcheck:
@@ -214,6 +258,8 @@ services:
     restart: unless-stopped
     mem_limit: 1g
     depends_on:
+      ports-check:
+        condition: service_completed_successfully
       objectstore-permissions:
         condition: service_completed_successfully
     environment:
@@ -227,8 +273,8 @@ services:
       RUSTFS_UNSAFE_BYPASS_DISK_CHECK: 'true'
       RUSTFS_OBS_LOGGER_LEVEL: warn
     ports:
-    - 127.0.0.1:${S3_API_PORT:-9000}:9000
-    - 127.0.0.1:${S3_CONSOLE_PORT:-9001}:9001
+    - 127.0.0.1:${S3_API_PORT:-25003}:9000
+    - 127.0.0.1:${S3_CONSOLE_PORT:-25004}:9001
     volumes:
     - objectstore-data:/data
     healthcheck:
@@ -279,6 +325,8 @@ services:
     restart: unless-stopped
     mem_limit: 768m
     depends_on:
+      ports-check:
+        condition: service_completed_successfully
       objectstore-init:
         condition: service_completed_successfully
       iceberg-catalog-permissions:
@@ -297,7 +345,7 @@ services:
       CATALOG_JDBC_SCHEMA__VERSION: V1
       CATALOG_JDBC_STRICT__MODE: 'true'
     ports:
-    - 127.0.0.1:${ICEBERG_REST_PORT:-8181}:8181
+    - 127.0.0.1:${ICEBERG_REST_PORT:-25005}:8181
     volumes:
     - iceberg-catalog-data:/var/lib/iceberg
     healthcheck:
@@ -346,7 +394,7 @@ services:
     - --webui-port
     - '8080'
     ports:
-    - 127.0.0.1:${SPARK_MASTER_UI_PORT:-18080}:8080
+    - 127.0.0.1:${SPARK_MASTER_UI_PORT:-25006}:8080
     healthcheck:
       test:
       - CMD
@@ -358,6 +406,8 @@ services:
       retries: 30
       start_period: 10s
     depends_on:
+      ports-check:
+        condition: service_completed_successfully
       workspace-init:
         condition: service_completed_successfully
       kafka-init:
@@ -390,7 +440,7 @@ services:
     - --webui-port
     - '8081'
     ports:
-    - 127.0.0.1:${SPARK_WORKER1_UI_PORT:-18081}:8081
+    - 127.0.0.1:${SPARK_WORKER1_UI_PORT:-25007}:8081
     healthcheck:
       test:
       - CMD
@@ -402,6 +452,8 @@ services:
       retries: 30
       start_period: 10s
     depends_on:
+      ports-check:
+        condition: service_completed_successfully
       workspace-init:
         condition: service_completed_successfully
       spark-master:
@@ -433,7 +485,7 @@ services:
     - --webui-port
     - '8081'
     ports:
-    - 127.0.0.1:${SPARK_WORKER2_UI_PORT:-18082}:8081
+    - 127.0.0.1:${SPARK_WORKER2_UI_PORT:-25008}:8081
     healthcheck:
       test:
       - CMD
@@ -445,6 +497,8 @@ services:
       retries: 30
       start_period: 10s
     depends_on:
+      ports-check:
+        condition: service_completed_successfully
       workspace-init:
         condition: service_completed_successfully
       spark-master:
@@ -469,7 +523,7 @@ services:
     - /opt/spark/bin/spark-class
     - org.apache.spark.deploy.history.HistoryServer
     ports:
-    - 127.0.0.1:${SPARK_HISTORY_UI_PORT:-18083}:18080
+    - 127.0.0.1:${SPARK_HISTORY_UI_PORT:-25009}:18080
     healthcheck:
       test:
       - CMD
@@ -481,6 +535,8 @@ services:
       retries: 40
       start_period: 15s
     depends_on:
+      ports-check:
+        condition: service_completed_successfully
       workspace-init:
         condition: service_completed_successfully
       spark-master:
@@ -539,8 +595,8 @@ services:
     - --IdentityProvider.token=${JUPYTER_TOKEN:-CHANGE_ME}
     - --ServerApp.password=
     ports:
-    - 127.0.0.1:${JUPYTER_PORT:-8888}:8888
-    - 127.0.0.1:${SPARK_JOBS_UI_PORT:-4040}:4040
+    - 127.0.0.1:${JUPYTER_PORT:-25010}:8888
+    - 127.0.0.1:${SPARK_JOBS_UI_PORT:-25011}:4040
     healthcheck:
       test:
       - CMD
@@ -552,6 +608,8 @@ services:
       retries: 40
       start_period: 20s
     depends_on:
+      ports-check:
+        condition: service_completed_successfully
       workspace-init:
         condition: service_completed_successfully
       spark-master:
@@ -570,6 +628,8 @@ services:
     restart: unless-stopped
     mem_limit: 2g
     depends_on:
+      ports-check:
+        condition: service_completed_successfully
       postgres-bootstrap:
         condition: service_completed_successfully
       iceberg-rest:
@@ -583,7 +643,7 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-formation}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-formation}
     ports:
-    - 127.0.0.1:${TRINO_PORT:-8085}:8080
+    - 127.0.0.1:${TRINO_PORT:-25012}:8080
     volumes:
     - ./trino/catalog:/etc/trino/catalog:ro
     - ./trino/etc/jvm.config:/etc/trino/jvm.config:ro
@@ -598,6 +658,9 @@ services:
     networks:
     - training-net
   mock-opendata:
+    depends_on:
+      ports-check:
+        condition: service_completed_successfully
     image: bigdata-training/mock-opendata:local
     build:
       context: ./docker/mock-opendata
@@ -611,7 +674,7 @@ services:
     volumes:
     - ./data:/data:ro
     ports:
-    - 127.0.0.1:${MOCK_OPENDATA_PORT:-18000}:8000
+    - 127.0.0.1:${MOCK_OPENDATA_PORT:-25013}:8000
     healthcheck:
       test:
       - CMD
@@ -741,6 +804,8 @@ services:
     restart: unless-stopped
     mem_limit: 2g
     depends_on:
+      ports-check:
+        condition: service_completed_successfully
       workspace-init:
         condition: service_completed_successfully
       airflow-db:
@@ -767,7 +832,7 @@ services:
     - airflow
     - standalone
     ports:
-    - 127.0.0.1:${AIRFLOW_PORT:-8088}:8080
+    - 127.0.0.1:${AIRFLOW_PORT:-25014}:8080
     healthcheck:
       test:
       - CMD-SHELL
@@ -785,6 +850,9 @@ services:
     networks:
     - training-net
   elasticsearch:
+    depends_on:
+      ports-check:
+        condition: service_completed_successfully
     image: docker.elastic.co/elasticsearch/elasticsearch:9.5.4
     profiles:
     - elastic
@@ -802,7 +870,7 @@ services:
         soft: 65535
         hard: 65535
     ports:
-    - 127.0.0.1:${ELASTICSEARCH_PORT:-9200}:9200
+    - 127.0.0.1:${ELASTICSEARCH_PORT:-25015}:9200
     volumes:
     - elasticsearch-data:/usr/share/elasticsearch/data
     healthcheck:
@@ -823,13 +891,15 @@ services:
     restart: unless-stopped
     mem_limit: 1536m
     depends_on:
+      ports-check:
+        condition: service_completed_successfully
       elasticsearch:
         condition: service_healthy
     environment:
       ELASTICSEARCH_HOSTS: http://elasticsearch:9200
       NODE_OPTIONS: --max-old-space-size=1024
     ports:
-    - 127.0.0.1:${KIBANA_PORT:-5601}:5601
+    - 127.0.0.1:${KIBANA_PORT:-25016}:5601
     networks:
     - training-net
   logstash:
@@ -878,11 +948,13 @@ services:
       PGADMIN_SERVER_JSON_FILE: /config/servers.json
       PGADMIN_REPLACE_SERVERS_ON_STARTUP: 'True'
     ports:
-    - 127.0.0.1:${PGADMIN_PORT:-5050}:80
+    - 127.0.0.1:${PGADMIN_PORT:-25017}:80
     volumes:
     - pgadmin-data:/var/lib/pgadmin
     - pgadmin-config:/config:ro
     depends_on:
+      ports-check:
+        condition: service_completed_successfully
       postgres-source:
         condition: service_healthy
       pgadmin-config:
@@ -896,8 +968,10 @@ services:
       KAFKA_CLUSTERS_0_NAME: Formation
       KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:19092
     ports:
-    - 127.0.0.1:${KAFKA_UI_PORT:-8086}:8080
+    - 127.0.0.1:${KAFKA_UI_PORT:-25018}:8080
     depends_on:
+      ports-check:
+        condition: service_completed_successfully
       kafka-init:
         condition: service_completed_successfully
     networks:
@@ -1209,6 +1283,8 @@ services:
     volumes:
     - druid-router-var:/opt/druid/var
     depends_on:
+      ports-check:
+        condition: service_completed_successfully
       druid-db:
         condition: service_healthy
       zookeeper:
@@ -1218,7 +1294,7 @@ services:
     networks:
     - training-net
     ports:
-    - 127.0.0.1:${DRUID_PORT:-8889}:8888
+    - 127.0.0.1:${DRUID_PORT:-25019}:8888
     healthcheck:
       test:
       - CMD-SHELL
@@ -1293,8 +1369,10 @@ services:
     - '120'
     - superset.app:create_app()
     ports:
-    - 127.0.0.1:${SUPERSET_PORT:-8089}:8088
+    - 127.0.0.1:${SUPERSET_PORT:-25020}:8088
     depends_on:
+      ports-check:
+        condition: service_completed_successfully
       superset-init:
         condition: service_completed_successfully
     healthcheck:
@@ -1399,6 +1477,9 @@ services:
     - training-net
     user: airflow
   dashboard:
+    depends_on:
+      ports-check:
+        condition: service_completed_successfully
     image: python:3.12-slim
     restart: unless-stopped
     entrypoint:
@@ -1418,24 +1499,24 @@ services:
       PGADMIN_PASSWORD: ${PGADMIN_PASSWORD:-formation}
       SUPERSET_ADMIN_USER: ${SUPERSET_ADMIN_USER:-admin}
       SUPERSET_ADMIN_PASSWORD: ${SUPERSET_ADMIN_PASSWORD:-formation}
-      S3_CONSOLE_PORT: ${S3_CONSOLE_PORT:-9001}
-      PGADMIN_PORT: ${PGADMIN_PORT:-5050}
-      KAFKA_UI_PORT: ${KAFKA_UI_PORT:-8086}
-      SPARK_MASTER_UI_PORT: ${SPARK_MASTER_UI_PORT:-18080}
-      SPARK_WORKER1_UI_PORT: ${SPARK_WORKER1_UI_PORT:-18081}
-      SPARK_WORKER2_UI_PORT: ${SPARK_WORKER2_UI_PORT:-18082}
-      SPARK_HISTORY_UI_PORT: ${SPARK_HISTORY_UI_PORT:-18083}
-      SPARK_JOBS_UI_PORT: ${SPARK_JOBS_UI_PORT:-4040}
-      JUPYTER_PORT: ${JUPYTER_PORT:-8888}
-      TRINO_PORT: ${TRINO_PORT:-8085}
-      AIRFLOW_PORT: ${AIRFLOW_PORT:-8088}
-      KIBANA_PORT: ${KIBANA_PORT:-5601}
-      DRUID_PORT: ${DRUID_PORT:-8889}
-      SUPERSET_PORT: ${SUPERSET_PORT:-8089}
-      ICEBERG_REST_PORT: ${ICEBERG_REST_PORT:-8181}
-      ELASTICSEARCH_PORT: ${ELASTICSEARCH_PORT:-9200}
+      S3_CONSOLE_PORT: ${S3_CONSOLE_PORT:-25004}
+      PGADMIN_PORT: ${PGADMIN_PORT:-25017}
+      KAFKA_UI_PORT: ${KAFKA_UI_PORT:-25018}
+      SPARK_MASTER_UI_PORT: ${SPARK_MASTER_UI_PORT:-25006}
+      SPARK_WORKER1_UI_PORT: ${SPARK_WORKER1_UI_PORT:-25007}
+      SPARK_WORKER2_UI_PORT: ${SPARK_WORKER2_UI_PORT:-25008}
+      SPARK_HISTORY_UI_PORT: ${SPARK_HISTORY_UI_PORT:-25009}
+      SPARK_JOBS_UI_PORT: ${SPARK_JOBS_UI_PORT:-25011}
+      JUPYTER_PORT: ${JUPYTER_PORT:-25010}
+      TRINO_PORT: ${TRINO_PORT:-25012}
+      AIRFLOW_PORT: ${AIRFLOW_PORT:-25014}
+      KIBANA_PORT: ${KIBANA_PORT:-25016}
+      DRUID_PORT: ${DRUID_PORT:-25019}
+      SUPERSET_PORT: ${SUPERSET_PORT:-25020}
+      ICEBERG_REST_PORT: ${ICEBERG_REST_PORT:-25005}
+      ELASTICSEARCH_PORT: ${ELASTICSEARCH_PORT:-25015}
     ports:
-    - 127.0.0.1:${DASHBOARD_PORT:-8090}:8090
+    - 127.0.0.1:${DASHBOARD_PORT:-25021}:8090
     volumes:
     - ./dashboard:/app:ro
     - check-reports:/reports:ro

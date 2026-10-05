@@ -1,0 +1,37 @@
+name: Published ports contracts
+on:
+  push:
+    branches: [master]
+    paths: ['compose.yaml', 'ports.env', 'docker/ports-check/**', 'tests/test_ports.py', '.github/workflows/ports.yml']
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  ports:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install pytest PyYAML
+      - run: python -m pytest -q tests/test_ports.py
+      - run: docker compose --env-file .env --env-file ports.env --profile full config --quiet
+      - name: Probe all 22 ports on the real Docker engine
+        run: docker compose --env-file .env --env-file ports.env run --build --no-deps --rm ports-check
+      - name: Detect a conflicting foreign container
+        run: |
+          docker run -d --name ports-ci-conflict -p 127.0.0.1:25021:8090 alpine:3.22.5 sleep 300
+          python -c "import subprocess; p=subprocess.run(['docker','compose','--env-file','.env','--env-file','ports.env','run','--no-deps','--rm','ports-check','--services','dashboard']); assert p.returncode == 1"
+          docker rm -f ports-ci-conflict
+      - name: Accept the matching existing project service
+        run: |
+          docker compose --env-file .env --env-file ports.env up -d dashboard
+          docker compose --env-file .env --env-file ports.env run --no-deps --rm ports-check --services dashboard
+      - name: Cleanup
+        if: always()
+        run: |
+          docker rm -f ports-ci-conflict || true
+          docker compose --env-file .env --env-file ports.env --profile '*' down --volumes --remove-orphans

@@ -1,3 +1,10 @@
+> **Installation complète — nouveau plan de ports :** utiliser
+> `--env-file .env --env-file ports.env` dans toutes les commandes Compose.
+> Les ports externes sont désormais 25000–25021 et le portail est
+> http://localhost:25021. Voir [la procédure complète](docs/Ports_Installation.md).
+> Lancer `docker compose --env-file .env --env-file ports.env run --no-deps --rm ports-check`
+> après la construction, avant `up -d`, pour contrôler tous les conflits à la fois.
+
 <img src="https://raw.githubusercontent.com/rbizoi/FormationBigDataBI/refs/heads/master/images/architecture.png" width="1024">
 
 # Docker formation Big Data et BI
@@ -15,20 +22,20 @@ Les valeurs pédagogiques de secours de Compose sont utilisables directement. Le
 docker version
 docker compose version
 docker info --format "{{.OSType}}"
-docker compose --profile full config --quiet
-docker compose --profile full build
-docker compose --profile full up -d
+docker compose --env-file .env --env-file ports.env --profile full config --quiet
+docker compose --env-file .env --env-file ports.env --profile full build
+docker compose --env-file .env --env-file ports.env --profile full up -d
 ```
 
 `OSType` doit être `linux`, y compris sous Windows. Compose attend les dépendances saines et les initialisations terminées. La fin de `up -d` ne constitue pas une validation des échanges de données. Le premier démarrage de la pile complète peut prendre plusieurs minutes.
 
-**Portail : http://localhost:8090**. Il regroupe les interfaces, les identifiants réellement configurés et les rapports. Les boutons ouvrent les interfaces des conteneurs déjà démarrés ; ils ne démarrent pas de conteneurs.
+**Portail : http://localhost:25021**. Il regroupe les interfaces, les identifiants réellement configurés et les rapports. Les boutons ouvrent les interfaces des conteneurs déjà démarrés ; ils ne démarrent pas de conteneurs.
 
 ## Contrôles fonctionnels avec les données existantes
 
 ```text
-docker compose --profile checks run --rm integration-check --full
-docker compose --profile checks run --rm airflow-check
+docker compose --env-file .env --env-file ports.env --profile checks run --rm integration-check --full
+docker compose --env-file .env --env-file ports.env --profile checks run --rm airflow-check
 ```
 
 Exécuter ces deux commandes successivement. Selon le matériel, prévoir jusqu’à 30–60 minutes pour la première validation complète. La seconde nécessite les tables produites par la première. Chaque commande retourne `0` seulement si ses contrôles passent, et un code non nul en cas d’échec. **La validation complète exige le succès des deux commandes.** Les rapports `reports/integration.json` et `reports/airflow-check.json`, affichés dans le portail, sont horodatés ; les logs Spark détaillés restent dans `reports/`.
@@ -45,17 +52,17 @@ Voir [la matrice d’intégration](docs/INTEGRATION_MATRIX.md) pour les liens pr
 
 ```text
 docker compose build
-docker compose up -d
-docker compose --profile checks run --rm integration-check
+docker compose --env-file .env --env-file ports.env up -d
+docker compose --env-file .env --env-file ports.env --profile checks run --rm integration-check
 ```
 
 | Profil | Produits ajoutés | Commande |
 |---|---|---|
-| `analytics` | Druid, ZooKeeper, métadonnées, Superset | `docker compose --profile analytics up -d --build` |
-| `elastic` | Elasticsearch, Logstash, Kibana | `docker compose --profile elastic up -d` |
-| `orchestration` | Airflow et sa base | `docker compose --profile orchestration up -d --build` |
-| `demo` | API OpenData locale et producteur continu Kafka | `docker compose --profile demo up -d --build` |
-| `full` | Les quatre ensembles ci-dessus | `docker compose --profile full up -d --build` |
+| `analytics` | Druid, ZooKeeper, métadonnées, Superset | `docker compose --env-file .env --env-file ports.env --profile analytics up -d --build` |
+| `elastic` | Elasticsearch, Logstash, Kibana | `docker compose --env-file .env --env-file ports.env --profile elastic up -d` |
+| `orchestration` | Airflow et sa base | `docker compose --env-file .env --env-file ports.env --profile orchestration up -d --build` |
+| `demo` | API OpenData locale et producteur continu Kafka | `docker compose --env-file .env --env-file ports.env --profile demo up -d --build` |
+| `full` | Les quatre ensembles ci-dessus | `docker compose --env-file .env --env-file ports.env --profile full up -d --build` |
 
 Les profils `seed` et `logs` restent disponibles pour lancer les producteurs individuellement ; le contrôle d’intégration les exécute lui-même dans son conteneur.
 
@@ -65,33 +72,33 @@ Les valeurs pédagogiques par défaut utilisent `formation` pour la base, l’ut
 
 | Produit / interface | Adresse locale | Utilisateur | Mot de passe ou token |
 |---|---|---|---|
-| Portail | http://localhost:8090 | Aucun | Aucun |
-| PostgreSQL / pgAdmin | http://localhost:5050 | `admin@formation.fr` | `formation` |
+| Portail | http://localhost:25021 | Aucun | Aucun |
+| PostgreSQL / pgAdmin | http://localhost:25017 | `admin@formation.fr` | `formation` |
 | Connexion SQL dans pgAdmin | `postgres-source:5432`, base `formation` | `formation` | `formation` |
-| Kafka UI | http://localhost:8086 | Aucun | Aucun |
-| RustFS | http://localhost:9001 | `labadmin` | `TRAINING_ONLY_S3_PASSWORD` |
-| Spark Master | http://localhost:18080 | Aucun | Aucun |
-| Spark Workers | http://localhost:18081 et http://localhost:18082 | Aucun | Aucun |
-| Spark History | http://localhost:18083 | Aucun | Aucun |
-| Job Spark Jupyter | http://localhost:4040 | Aucun | Seulement pendant une session Spark active |
-| JupyterLab | http://localhost:8888 | Aucun | `CHANGE_ME` par défaut ; valeur `JUPYTER_TOKEN` dans le portail |
-| Trino | http://localhost:8085 | `formation` (libre) | Aucun |
-| Airflow | http://localhost:8088 | Aucun en mode pédagogique `all_admins` | Aucun |
-| Kibana | http://localhost:5601 | Aucun | Aucun |
-| Druid | http://localhost:8889 | Aucun | Aucun |
-| Superset | http://localhost:8089 | `admin` | `formation` |
+| Kafka UI | http://localhost:25018 | Aucun | Aucun |
+| RustFS | http://localhost:25004 | `labadmin` | `TRAINING_ONLY_S3_PASSWORD` |
+| Spark Master | http://localhost:25006 | Aucun | Aucun |
+| Spark Workers | http://localhost:25007 et http://localhost:25008 | Aucun | Aucun |
+| Spark History | http://localhost:25009 | Aucun | Aucun |
+| Job Spark Jupyter | http://localhost:25011 | Aucun | Seulement pendant une session Spark active |
+| JupyterLab | http://localhost:25010 | Aucun | `CHANGE_ME` par défaut ; valeur `JUPYTER_TOKEN` dans le portail |
+| Trino | http://localhost:25012 | `formation` (libre) | Aucun |
+| Airflow | http://localhost:25014 | Aucun en mode pédagogique `all_admins` | Aucun |
+| Kibana | http://localhost:25016 | Aucun | Aucun |
+| Druid | http://localhost:25019 | Aucun | Aucun |
+| Superset | http://localhost:25020 | `admin` | `formation` |
 
 Les ports sont modifiables dans `.env` ; le portail suit les mêmes variables. Pour pgAdmin, le serveur est préenregistré mais le mot de passe SQL est demandé à la connexion. Changer une variable après la création d’un compte ou d’un volume PostgreSQL ne change pas son mot de passe : le modifier dans le produit, ou repartir de volumes neufs si les données sont jetables. Jupyter lit son token au démarrage du conteneur. Les notebooks existants sont copiés une fois dans un volume nommé ; les modifications dans Jupyter y sont conservées. Les nouveautés sont copiées si leur chemin n’existe pas déjà.
 
-Iceberg REST est une API (`http://localhost:8181/v1/config`) sans console native dans l’image utilisée ; ses tables se consultent dans Superset, Trino ou Jupyter. Elasticsearch a Kibana ; Logstash se supervise avec les logs Docker et les données dans Kibana. ZooKeeper et les bases de métadonnées sont des dépendances internes. Parquet et Delta sont des formats, consultables avec Jupyter/Spark. Power BI Desktop reste une application externe Windows : Superset fournit ici l’interface BI disponible sur les deux systèmes.
+Iceberg REST est une API (`http://localhost:25005/v1/config`) sans console native dans l’image utilisée ; ses tables se consultent dans Superset, Trino ou Jupyter. Elasticsearch a Kibana ; Logstash se supervise avec les logs Docker et les données dans Kibana. ZooKeeper et les bases de métadonnées sont des dépendances internes. Parquet et Delta sont des formats, consultables avec Jupyter/Spark. Power BI Desktop reste une application externe Windows : Superset fournit ici l’interface BI disponible sur les deux systèmes.
 
 Tous les ports publiés sont limités à `127.0.0.1`. Les comptes sont pédagogiques et plusieurs services sont sans authentification. Éviter d’exposer ce Compose sur Internet. Le portail affiche volontairement les accès du laboratoire local.
 
 ## Validation statique facultative
 
 ```text
-docker compose --profile checks build static-check
-docker compose --profile checks run --rm static-check
+docker compose --env-file .env --env-file ports.env --profile checks build static-check
+docker compose --env-file .env --env-file ports.env --profile checks run --rm static-check
 ```
 
 Cette commande vérifie les fichiers et les contrats des données. Elle ne remplace pas les deux contrôles runtime.
@@ -99,21 +106,21 @@ Cette commande vérifie les fichiers et les contrats des données. Elle ne rempl
 ## Commandes de contrôle et d’exploitation
 
 ```text
-docker compose --profile full ps -a
-docker compose --profile full logs --tail 100
+docker compose --env-file .env --env-file ports.env --profile full ps -a
+docker compose --env-file .env --env-file ports.env --profile full logs --tail 100
 docker compose logs postgres-bootstrap kafka-init objectstore-init notebooks-init pgadmin-config
-docker compose --profile full logs superset-init druid-coordinator druid-middlemanager
-docker compose --profile full exec airflow airflow dags list
+docker compose --env-file .env --env-file ports.env --profile full logs superset-init druid-coordinator druid-middlemanager
+docker compose --env-file .env --env-file ports.env --profile full exec airflow airflow dags list
 docker compose exec trino trino --user formation --execute "SHOW CATALOGS"
-docker compose --profile full stop
-docker compose --profile full start
-docker compose --profile full down
+docker compose --env-file .env --env-file ports.env --profile full stop
+docker compose --env-file .env --env-file ports.env --profile full start
+docker compose --env-file .env --env-file ports.env --profile full down
 ```
 
 `down` conserve les volumes. Pour **supprimer les données Docker de ce projet** et repartir à zéro :
 
 ```text
-docker compose --profile full --profile checks --profile seed --profile logs down --volumes --remove-orphans
+docker compose --env-file .env --env-file ports.env --profile full --profile checks --profile seed --profile logs down --volumes --remove-orphans
 ```
 
 Cette dernière commande supprime aussi les notebooks modifiés dans le volume. Les données sources du dépôt et les rapports sur l’hôte restent présents. Ne pas utiliser `docker system prune` pour réinitialiser ce laboratoire.
@@ -152,15 +159,15 @@ L'accès Spark utilise les JAR Hadoop S3A déjà inclus dans l'image.
 Depuis ce dossier, avec le même nom de projet que l'installation précédente :
 
 ```text
-docker compose --profile full --profile checks down
-docker compose --profile full --profile checks build
-docker compose run --rm workspace-init
-docker compose --profile full up -d --force-recreate
-docker compose run --rm objectstore-init
-docker compose run --rm objectstore-init --verify-only
-docker compose --profile full ps -a
-docker compose --profile checks run --rm integration-check --full
-docker compose --profile checks run --rm airflow-check
+docker compose --env-file .env --env-file ports.env --profile full --profile checks down
+docker compose --env-file .env --env-file ports.env --profile full --profile checks build
+docker compose --env-file .env --env-file ports.env run --rm workspace-init
+docker compose --env-file .env --env-file ports.env --profile full up -d --force-recreate
+docker compose --env-file .env --env-file ports.env run --rm objectstore-init
+docker compose --env-file .env --env-file ports.env run --rm objectstore-init --verify-only
+docker compose --env-file .env --env-file ports.env --profile full ps -a
+docker compose --env-file .env --env-file ports.env --profile checks run --rm integration-check --full
+docker compose --env-file .env --env-file ports.env --profile checks run --rm airflow-check
 ```
 
 Ces commandes conservent les volumes PostgreSQL, Kafka, RustFS et les autres
@@ -182,7 +189,7 @@ le volume `check-reports`, consultables via le portail.
 
 ```text
 docker compose exec --user spark spark-jupyter python3 -c "from pathlib import Path; print(list(Path('/home/spark/data').iterdir())); print(list(Path('/home/spark/jobs').iterdir()))"
-docker compose --profile full exec --user airflow airflow python3 -c "from pathlib import Path; print(Path('/home/spark/data/input/sales.csv').open().readline()); print(Path('/home/spark/jobs/10_verify_workspace_s3.py').is_file())"
+docker compose --env-file .env --env-file ports.env --profile full exec --user airflow airflow python3 -c "from pathlib import Path; print(Path('/home/spark/data/input/sales.csv').open().readline()); print(Path('/home/spark/jobs/10_verify_workspace_s3.py').is_file())"
 docker compose logs workspace-init objectstore-init
 ```
 
@@ -203,12 +210,12 @@ du fichier Parquet `data/meteo.gzip` dans `meteo.observations`, une hypertable
 partitionnée par mois. Le chargement est transactionnel et peut être relancé.
 
 ```text
-docker compose --profile timeseries build timescale-load
-docker compose --profile timeseries up -d timescaledb pgadmin dashboard
-docker compose run --rm pgadmin-config
-docker compose up -d --force-recreate pgadmin dashboard
-docker compose --profile timeseries run --rm timescale-load
-docker compose --profile checks run --rm timescale-check
+docker compose --env-file .env --env-file ports.env --profile timeseries build timescale-load
+docker compose --env-file .env --env-file ports.env --profile timeseries up -d timescaledb pgadmin dashboard
+docker compose --env-file .env --env-file ports.env run --rm pgadmin-config
+docker compose --env-file .env --env-file ports.env up -d --force-recreate pgadmin dashboard
+docker compose --env-file .env --env-file ports.env --profile timeseries run --rm timescale-load
+docker compose --env-file .env --env-file ports.env --profile checks run --rm timescale-check
 ```
 
 Le contrôle compare toutes les lignes et colonnes au fichier d'origine ; le
