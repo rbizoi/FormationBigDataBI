@@ -3,21 +3,21 @@ import html, json, os
 from pathlib import Path
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 PRODUCTS = [
- ('TimescaleDB météo · pgAdmin','PGADMIN_PORT',25017,'PGADMIN_EMAIL','PGADMIN_PASSWORD','Dans pgAdmin, ouvrir le serveur « TimescaleDB météo ». Hôte timescaledb:5432 ; base {TIMESCALE_DB} ; utilisateur SQL {TIMESCALE_USER} ; mot de passe SQL {TIMESCALE_PASSWORD}. Profil timeseries ou full.'),
+ ('JupyterLab','JUPYTER_PORT',25010,'','JUPYTER_TOKEN','Saisir le token ci-dessous. Notebooks dans un volume persistant.'),
  ('PostgreSQL · pgAdmin','PGADMIN_PORT',25017,'PGADMIN_EMAIL','PGADMIN_PASSWORD','Serveur SQL postgres-source:5432. Base {POSTGRES_DB} ; utilisateur SQL {POSTGRES_USER} ; mot de passe SQL {POSTGRES_PASSWORD}.'),
- ('Kafka UI','KAFKA_UI_PORT',25018,'','','Topics, messages et consommateurs.'),
+ ('TimescaleDB météo · pgAdmin','PGADMIN_PORT',25017,'PGADMIN_EMAIL','PGADMIN_PASSWORD','Dans pgAdmin, ouvrir le serveur « TimescaleDB météo ». Hôte timescaledb:5432 ; base {TIMESCALE_DB} ; utilisateur SQL {TIMESCALE_USER} ; mot de passe SQL {TIMESCALE_PASSWORD}. Profil timeseries ou full.'),
  ('RustFS · S3','S3_CONSOLE_PORT',25004,'S3_ACCESS_KEY','S3_SECRET_KEY','Buckets Parquet, Delta, Iceberg et Druid.'),
  ('Spark Master','SPARK_MASTER_UI_PORT',25006,'','','Workers et applications.'),
  ('Spark Worker 1','SPARK_WORKER1_UI_PORT',25007,'','','Exécuteurs du premier worker.'),
  ('Spark Worker 2','SPARK_WORKER2_UI_PORT',25008,'','','Exécuteurs du second worker.'),
  ('Spark History','SPARK_HISTORY_UI_PORT',25009,'','','Historique des applications conservé dans S3.'),
  ('Spark · job Jupyter actif','SPARK_JOBS_UI_PORT',25011,'','','Disponible uniquement pendant une SparkSession Jupyter active.'),
- ('JupyterLab','JUPYTER_PORT',25010,'','JUPYTER_TOKEN','Saisir le token ci-dessous. Notebooks dans un volume persistant.'),
+ ('Apache Druid','DRUID_PORT',25019,'','','Profil analytics ou full. Console native d’ingestion et SQL.'),
+ ('Apache Superset','SUPERSET_PORT',25020,'SUPERSET_ADMIN_USER','SUPERSET_ADMIN_PASSWORD','Profil analytics ou full. PostgreSQL, Trino et Druid préenregistrés. SQL Lab et tableaux de bord.'),
+ ('Kafka UI','KAFKA_UI_PORT',25018,'','','Topics, messages et consommateurs.'),
  ('Trino','TRINO_PORT',25012,'','','Utilisateur libre : formation, sans mot de passe. Supervision SQL ; requêtes dans Superset ou Jupyter.'),
  ('Airflow','AIRFLOW_PORT',25014,'','','Profil orchestration ou full. Mode pédagogique all_admins : sans authentification.'),
  ('Kibana · Elastic / Logstash','KIBANA_PORT',25016,'','','Profil elastic ou full. Exploration des logs. Logstash : données indexées et logs Docker.'),
- ('Apache Druid','DRUID_PORT',25019,'','','Profil analytics ou full. Console native d’ingestion et SQL.'),
- ('Apache Superset','SUPERSET_PORT',25020,'SUPERSET_ADMIN_USER','SUPERSET_ADMIN_PASSWORD','Profil analytics ou full. PostgreSQL, Trino et Druid préenregistrés. SQL Lab et tableaux de bord.'),
  ('Iceberg REST · API','ICEBERG_REST_PORT',25005,'','','API /v1/config. Tables consultables dans Superset, Trino ou Jupyter.'),
  ('Elasticsearch · API','ELASTICSEARCH_PORT',25015,'','','Profil elastic ou full. Interface utilisateur : Kibana.'),
 ]
