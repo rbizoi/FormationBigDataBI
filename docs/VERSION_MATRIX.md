@@ -13,7 +13,9 @@
 | Delta Lake | 4.0.0 |
 | Iceberg | 1.11.0 |
 | Hadoop AWS | 3.4.1 |
-| AWS SDK v2 (Hadoop) | 2.24.6 |
+| AWS SDK v2 (Hadoop) | 2.44.4 |
 | Trino | 483 |
 | Airflow | 3.1.7 |
 | Airflow Spark provider | selected by matching Airflow constraints |
+| Apache Druid | 37.0.0 |
+| pgAdmin | 9.8 |

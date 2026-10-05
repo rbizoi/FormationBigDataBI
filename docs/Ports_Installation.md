@@ -4,7 +4,7 @@ L'audit de `compose.yaml` trouve 19 publications TCP et aucun doublon interne.
 Les anciens conflits venaient de ports occupés sur la machine, pas de ports
 internes des conteneurs. Aucun port fixe ne peut être garanti libre sur tous les PC.
 
-Le fichier `ports.env` fournit la plage 25000–25021, différente des ports
+Le fichier `ports.env` fournit la plage 25001–25021 (avec des numéros laissés libres), différente des ports
 habituels des autres installations. Le fichier `.env` existant est conservé,
 avec ses autres paramètres. Chargez `ports.env` après `.env` pour que les
 nouvelles valeurs de ports soient prioritaires. Utilisez les mêmes options

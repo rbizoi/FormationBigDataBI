@@ -1,26 +1,48 @@
 # Matrice de validation des conteneurs
 
-| Service | Type | Validation obligatoire |
+Les interfaces et les flux sont contrôlés séparément. Voir le README pour les commandes et la matrice des intégrations pour les assertions sur les données.
+
+| Service | Exécution | Contrôle |
 |---|---|---|
-| postgres-source | long-running | `pg_isready` puis `SELECT count(*)` |
-| postgres-bootstrap | one-shot | schéma + seed + `POSTGRES_BOOTSTRAP_OK` / exit 0 |
-| kafka | long-running | Admin API via `kafka-topics --list` |
-| kafka-init | one-shot | création et relecture des 7 topics / exit 0 |
-| objectstore-permissions | one-shot | droits volume / exit 0 |
-| objectstore | long-running | `/health/ready` |
-| objectstore-init | one-shot | create/head/put/head des 3 buckets via boto3 |
-| iceberg-catalog-permissions | one-shot | droits volume catalogue / exit 0 |
-| iceberg-rest | long-running | `/v1/config` |
-| spark-master | long-running | socket 7077 + Master UI |
-| spark-worker-1 | long-running | Worker UI + exécution réelle du smoke test |
-| spark-worker-2 | long-running | Worker UI + exécution réelle du smoke test |
-| spark-history | long-running | UI 18083 + découverte du journal d’événements S3 |
-| spark-jupyter | long-running | socket 8888 + page login + imports JupyterLab/PySpark |
-| trino | long-running | `/v1/info`, `SHOW CATALOGS`, PostgreSQL, Iceberg |
-| mock-opendata | optionnel | endpoint `/health` |
-| api-producer | optionnel | processus actif + Kafka |
-| file-producer | one-shot | flush Kafka / exit 0 |
-| postgres-producer | one-shot | lecture PostgreSQL + flush Kafka / exit 0 |
-| web-log-producer | one-shot | exactement 600 + 220 événements |
-| airflow-db | optionnel | `pg_isready` |
-| airflow | optionnel | health API, DAGs, vrai `spark-submit` |
+| `ports-check` | Initialisation / producteur à exécution unique | Code de sortie 0 et données produites |
+| `workspace-init` | Initialisation / producteur à exécution unique | Code de sortie 0 et données produites |
+| `postgres-source` | Serveur | Healthcheck Compose puis contrôle fonctionnel selon la matrice |
+| `postgres-bootstrap` | Initialisation / producteur à exécution unique | Code de sortie 0 et données produites |
+| `kafka` | Serveur | Healthcheck Compose puis contrôle fonctionnel selon la matrice |
+| `kafka-init` | Initialisation / producteur à exécution unique | Code de sortie 0 et données produites |
+| `objectstore-permissions` | Initialisation / producteur à exécution unique | Code de sortie 0 et données produites |
+| `objectstore` | Serveur | Healthcheck Compose puis contrôle fonctionnel selon la matrice |
+| `objectstore-init` | Initialisation / producteur à exécution unique | Code de sortie 0 et données produites |
+| `iceberg-catalog-permissions` | Initialisation / producteur à exécution unique | Code de sortie 0 et données produites |
+| `iceberg-rest` | Serveur | Healthcheck Compose puis contrôle fonctionnel selon la matrice |
+| `spark-master` | Serveur | Healthcheck Compose puis contrôle fonctionnel selon la matrice |
+| `spark-worker-1` | Serveur | Healthcheck Compose puis contrôle fonctionnel selon la matrice |
+| `spark-worker-2` | Serveur | Healthcheck Compose puis contrôle fonctionnel selon la matrice |
+| `spark-history` | Serveur | Healthcheck Compose puis contrôle fonctionnel selon la matrice |
+| `spark-jupyter` | Serveur | Healthcheck Compose puis contrôle fonctionnel selon la matrice |
+| `trino` | Serveur | Healthcheck Compose puis contrôle fonctionnel selon la matrice |
+| `mock-opendata` | Serveur | Healthcheck Compose puis contrôle fonctionnel selon la matrice |
+| `api-producer` | Serveur | Interface / fonctionnement dans les flux de la matrice |
+| `file-producer` | Initialisation / producteur à exécution unique | Code de sortie 0 et données produites |
+| `postgres-producer` | Initialisation / producteur à exécution unique | Code de sortie 0 et données produites |
+| `web-log-producer` | Initialisation / producteur à exécution unique | Code de sortie 0 et données produites |
+| `airflow-db` | Serveur | Healthcheck Compose puis contrôle fonctionnel selon la matrice |
+| `airflow` | Serveur | Healthcheck Compose puis contrôle fonctionnel selon la matrice |
+| `notebooks-init` | Initialisation / producteur à exécution unique | Code de sortie 0 et données produites |
+| `pgadmin` | Serveur | Interface / fonctionnement dans les flux de la matrice |
+| `kafka-ui` | Serveur | Interface / fonctionnement dans les flux de la matrice |
+| `druid-db` | Serveur | Healthcheck Compose puis contrôle fonctionnel selon la matrice |
+| `zookeeper` | Serveur | Interface / fonctionnement dans les flux de la matrice |
+| `druid-coordinator` | Serveur | Healthcheck Compose puis contrôle fonctionnel selon la matrice |
+| `druid-broker` | Serveur | Healthcheck Compose puis contrôle fonctionnel selon la matrice |
+| `druid-historical` | Serveur | Healthcheck Compose puis contrôle fonctionnel selon la matrice |
+| `druid-middlemanager` | Serveur | Healthcheck Compose puis contrôle fonctionnel selon la matrice |
+| `druid-router` | Serveur | Healthcheck Compose puis contrôle fonctionnel selon la matrice |
+| `superset-db` | Serveur | Healthcheck Compose puis contrôle fonctionnel selon la matrice |
+| `superset-init` | Initialisation / producteur à exécution unique | Code de sortie 0 et données produites |
+| `superset` | Serveur | Healthcheck Compose puis contrôle fonctionnel selon la matrice |
+| `integration-check` | Contrôle à la demande | Code de sortie 0 et données produites |
+| `airflow-check` | Contrôle à la demande | Interface / fonctionnement dans les flux de la matrice |
+| `dashboard` | Serveur | Interface / fonctionnement dans les flux de la matrice |
+| `pgadmin-config` | Initialisation / producteur à exécution unique | Code de sortie 0 et données produites |
+| `static-check` | Contrôle à la demande | Interface / fonctionnement dans les flux de la matrice |
