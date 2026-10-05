@@ -10,6 +10,6 @@ for name, future in admin.create_topics([NewTopic(t, 3, 1) for t in topics], req
     except KafkaException as exc:
         if exc.args[0].code() != KafkaError.TOPIC_ALREADY_EXISTS:
             raise
-actual = admin.list_topics(timeout=30).topics
-assert all(t in actual and not actual[t].error for t in topics)
+from kafka_ready import wait_ready
+wait_ready(admin, topics)
 print('KAFKA_INIT_OK', ','.join(topics))

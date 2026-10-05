@@ -14,6 +14,7 @@ sys.path.insert(0, str(APP))
 from meteo import FIELDS, connect, normalize, parquet_file, source_rows
 from load_meteo import load
 from check_meteo import verify
+from diagnose_meteo import diagnose
 
 
 def fixture_file(path):
@@ -69,6 +70,7 @@ def test_live_reload_corruption_and_rollback(tmp_path):
     try:
         assert load(path, source)['rows'] == 3
         assert verify(path, source)['rows_verified'] == 3
+        assert diagnose()['status'] == 'PASS'
         assert load(path, source)['rows'] == 3
         assert verify(path, source)['rows_verified'] == 3
         load(other, other_source)

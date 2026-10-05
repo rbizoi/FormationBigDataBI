@@ -1,0 +1,28 @@
+name: Kafka partition readiness
+on:
+  push:
+    branches: [master]
+    paths: ['docker/bootstrap/**', 'docker/file-producer/**', 'checks/integration.py', 'tests/test_kafka_ready.py', '.github/workflows/kafka.yml']
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  kafka:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install pytest
+      - run: python -m pytest -q tests/test_kafka_ready.py
+      - run: docker compose --env-file .env --env-file ports.env --profile full build kafka-init file-producer
+      - run: docker compose --env-file .env --env-file ports.env --profile full run --rm kafka-init
+      - run: docker compose --env-file .env --env-file ports.env --profile full run --rm kafka-init
+      - run: docker compose --env-file .env --env-file ports.env --profile full run --rm file-producer
+      - if: always()
+        run: docker compose --env-file .env --env-file ports.env --profile full logs --tail=100 kafka
+      - if: always()
+        run: docker compose --env-file .env --env-file ports.env --profile full down -v

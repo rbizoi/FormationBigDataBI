@@ -8,11 +8,22 @@ from confluent_kafka import Producer
 
 BOOTSTRAP = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "kafka:19092")
 DATA_DIR = Path(os.getenv("DATA_DIR", "/data/input"))
+delivery_errors = []
+delivered = 0
+
+def on_delivery(error, message):
+    global delivered
+    if error:
+        delivery_errors.append(str(error))
+    else:
+        delivered += 1
+
 producer = Producer({
     "bootstrap.servers": BOOTSTRAP,
     "acks": "all",
     "enable.idempotence": True,
     "retries": 10,
+    "delivery.timeout.ms": 45000,
 })
 
 
@@ -20,7 +31,7 @@ def publish(topic, record, key=None):
     payload = json.dumps(record, ensure_ascii=False, default=str).encode("utf-8")
     while True:
         try:
-            producer.produce(topic, key=key, value=payload)
+            producer.produce(topic, key=key, value=payload, on_delivery=on_delivery)
             producer.poll(0)
             return
         except BufferError:
@@ -59,6 +70,6 @@ for row in catalog.to_dict(orient="records"):
 log("XLSX catalog published", record_count=len(catalog))
 
 pending = producer.flush(60)
-if pending:
-    raise RuntimeError(f"Kafka flush left {pending} pending messages")
+if pending or delivery_errors:
+    raise RuntimeError(f"Kafka delivery failed: delivered={delivered}, pending={pending}, errors={delivery_errors[:10]}; inspect kafka partition leaders and broker logs")
 print(f"FILE_PRODUCER_OK sales={len(sales)} customers={len(customers)} catalog={len(catalog)}")

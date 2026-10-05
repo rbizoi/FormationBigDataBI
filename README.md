@@ -222,3 +222,5 @@ Le contrôle compare toutes les lignes et colonnes au fichier d'origine ; le
 rapport est affiché dans le portail. Pour la procédure complète, les paramètres,
 le mapping des colonnes et les requêtes SQL, consulter
 [TimescaleDB_Meteo.md](docs/TimescaleDB_Meteo.md).
+
+Diagnostic du chargement météo et des partitions Kafka : [procédure et scripts](docs/Diagnostic_Meteo_Kafka.md).

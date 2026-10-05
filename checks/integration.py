@@ -55,6 +55,10 @@ def spark_job(name):
  return output.name
 
 def publish_sources():
+ sys.path.insert(0, '/producers/bootstrap')
+ from kafka_ready import wait_ready
+ from confluent_kafka.admin import AdminClient
+ wait_ready(AdminClient({'bootstrap.servers':'kafka:19092'}), ['sales.raw','customers.raw','catalog.raw','opendata.raw','application.logs','web.logs.raw'])
  env=dict(os.environ,DATA_DIR='/opt/spark/data/input',LOG_DATA_DIR='/opt/spark/data/logs',KAFKA_BOOTSTRAP_SERVERS='kafka:19092',PGHOST='postgres-source',PGDATABASE=os.environ['POSTGRES_DB'],PGUSER=os.environ['POSTGRES_USER'],PGPASSWORD=os.environ['POSTGRES_PASSWORD'])
  for name in ['file-producer','postgres-producer','web-log-producer']:
   subprocess.run([sys.executable,f'/producers/{name}/producer.py'],env=env,check=True,timeout=180)
