@@ -23,11 +23,11 @@ for name in ('data', 'jobs'):
 spark = SparkSession.builder.appName('WorkspaceAndS3Verification').getOrCreate()
 try:
     # binaryFile executes S3 reads on Spark executors, rather than a boto3 driver.
-    rows = spark.read.format('binaryFile').option('recursiveFileLookup', 'true').option('pathGlobFilter', '*').load('s3a://lakehouse/data/').selectExpr('path', 'sha2(content, 256) AS digest').collect()
+    rows = spark.read.format('binaryFile').option('recursiveFileLookup', 'true').option('pathGlobFilter', '*').load('s3a://lakehouse/donnees/').selectExpr('path', 'sha2(content, 256) AS digest').collect()
     actual = {row.path.split('/lakehouse/', 1)[1]: row.digest for row in rows}
-    local = {'data/' + p.relative_to('/home/spark/data').as_posix(): hashlib.sha256(p.read_bytes()).hexdigest() for p in Path('/home/spark/data').rglob('*') if p.is_file()}
+    local = {'donnees/' + p.relative_to('/home/spark/data').as_posix(): hashlib.sha256(p.read_bytes()).hexdigest() for p in Path('/home/spark/data').rglob('*') if p.is_file()}
     assert actual == local, (set(local) - set(actual), set(actual) - set(local))
-    sales = spark.read.option('header', True).csv('s3a://lakehouse/data/input/sales.csv')
+    sales = spark.read.option('header', True).csv('s3a://lakehouse/donnees/input/sales.csv')
     assert sales.count() == 2000
     assert sales.select('sale_id').distinct().count() == 2000
     def worker_access(_):

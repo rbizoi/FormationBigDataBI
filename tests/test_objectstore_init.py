@@ -70,13 +70,13 @@ def test_sync_nested_data_idempotent_and_detects_corruption(tmp_path):
     client = DataS3()
     client.create_bucket(Bucket='lakehouse')
     first = module.sync_data(client, tmp_path)
-    assert set(first) == {'data/input/sales.csv', 'data/binary.parquet'}
+    assert set(first) == {'donnees/input/sales.csv', 'donnees/binary.parquet'}
     assert module.sync_data(client, tmp_path) == first
     assert module.sync_data(client, tmp_path, verify_only=True) == first
-    client.buckets['lakehouse']['data/binary.parquet'] = b'corrupt'
+    client.buckets['lakehouse']['donnees/binary.parquet'] = b'corrupt'
     with pytest.raises(RuntimeError, match='S3 content mismatch'):
         module.sync_data(client, tmp_path, verify_only=True)
     module.sync_data(client, tmp_path)
-    client.buckets['lakehouse']['data-manifest.json'] = json.dumps({}).encode()
+    client.buckets['lakehouse']['donnees-manifest.json'] = json.dumps({}).encode()
     with pytest.raises(RuntimeError, match='manifest'):
         module.sync_data(client, tmp_path, verify_only=True)

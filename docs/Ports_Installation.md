@@ -1,6 +1,6 @@
 # Ports de la formation — installation complète
 
-L'audit de `compose.yaml` trouve 22 publications TCP et aucun doublon interne.
+L'audit de `compose.yaml` trouve 19 publications TCP et aucun doublon interne.
 Les anciens conflits venaient de ports occupés sur la machine, pas de ports
 internes des conteneurs. Aucun port fixe ne peut être garanti libre sur tous les PC.
 
@@ -47,7 +47,6 @@ le contrôle et le démarrage : il faut alors refaire le contrôle.
 
 | Variable | Port ordinateur |
 |---|---:|
-| `TIMESCALE_PORT` | 25000 |
 | `POSTGRES_PORT` | 25001 |
 | `KAFKA_EXTERNAL_PORT` | 25002 |
 | `S3_API_PORT` | 25003 |
@@ -62,8 +61,6 @@ le contrôle et le démarrage : il faut alors refaire le contrôle.
 | `TRINO_PORT` | 25012 |
 | `MOCK_OPENDATA_PORT` | 25013 |
 | `AIRFLOW_PORT` | 25014 |
-| `ELASTICSEARCH_PORT` | 25015 |
-| `KIBANA_PORT` | 25016 |
 | `PGADMIN_PORT` | 25017 |
 | `KAFKA_UI_PORT` | 25018 |
 | `DRUID_PORT` | 25019 |
@@ -73,7 +70,6 @@ le contrôle et le démarrage : il faut alors refaire le contrôle.
 Le portail est http://localhost:25021. Les liens de toutes les cartes et
 l'adresse Kafka annoncée à l'ordinateur suivent ces paramètres. Les adresses
 internes des conteneurs restent identiques : postgres-source:5432,
-timescaledb:5432, kafka:19092, objectstore:9000, elasticsearch:9200, etc.
 
 ## En cas de conflit
 
@@ -97,16 +93,16 @@ Aucun effacement des volumes n'est requis.
 
 ## Validation des étudiants
 
-Après la fin des initialisations (Exited 0), en particulier le chargement météo :
+Après la fin des initialisations (Exited 0) :
 
 ```text
 docker compose --env-file .env --env-file ports.env --profile checks run --rm static-check
 docker compose --env-file .env --env-file ports.env run --rm objectstore-init --verify-only
-docker compose --env-file .env --env-file ports.env --profile checks run --rm timescale-check
 docker compose --env-file .env --env-file ports.env --profile checks run --rm integration-check --full
 docker compose --env-file .env --env-file ports.env --profile checks run --rm airflow-check
 ```
 
-Les tests GitHub Actions vérifient les 22 ports avec de vraies publications,
+Les tests GitHub Actions vérifient les 19 ports avec de vraies publications,
 un conflit créé par un conteneur étranger et la reconnaissance d'un service
-existant de ce projet. Le workflow TimescaleDB utilise aussi le nouveau plan.
+
+Consulter le README pour la liste actuelle des services et les commandes de nettoyage.

@@ -19,7 +19,7 @@ jobs:
       - run: python -m pip install pytest PyYAML
       - run: python -m pytest -q tests/test_ports.py
       - run: docker compose --env-file .env --env-file ports.env --profile full config --quiet
-      - name: Probe all 22 ports on the real Docker engine
+      - name: Probe all 19 ports on the real Docker engine
         run: docker compose --env-file .env --env-file ports.env run --build --no-deps --rm ports-check
       - name: Detect a conflicting foreign container
         run: |

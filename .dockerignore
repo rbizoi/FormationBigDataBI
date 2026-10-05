@@ -2,7 +2,7 @@
 .idea
 reports
 airflow/logs
-data
+donnees
 spark/notebooks
 images
 documentation

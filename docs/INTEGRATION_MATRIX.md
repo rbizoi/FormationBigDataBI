@@ -14,8 +14,6 @@ Les contrôles portent sur des échanges supportés, avec des données existante
 | Spark | RustFS S3, Parquet, Delta, Iceberg REST | Lecture/écriture, comptes et sommes ; catalogue et stockage réellement utilisés |
 | Spark événements | RustFS S3, History Server | Applications visibles dans l’API History |
 | Trino | PostgreSQL, Iceberg REST, RustFS | Comptes, sommes et jointure fédérée non vide |
-| Kafka ventes | Logstash, Elasticsearch | Recherche d’un sale_id existant et égalité du montant après ingestion |
-| Elasticsearch | Kibana | API de statut Kibana ; recherche fonctionnelle dans Elasticsearch |
 | RustFS S3 sales.csv | Druid | Tâche batch terminée, COUNT et SUM exacts |
 | Kafka sales.raw | Druid | Supervisor, COUNT DISTINCT des ventes existantes |
 | Druid | PostgreSQL métadonnées, ZooKeeper, RustFS S3 | Ingestion réussie et segments S3 présents : chaîne native sollicitée |
@@ -26,6 +24,6 @@ Les contrôles portent sur des échanges supportés, avec des données existante
 
 **Sans lien direct configuré** : Druid ↔ Iceberg REST, Druid ↔ Delta, Superset ↔ Kafka, pgAdmin ↔ Kafka, ZooKeeper ↔ Trino, et les échanges entre interfaces web. Ces couples passent par Spark, SQL ou les API selon la chaîne ci-dessus ; ils ne sont pas présentés comme des intégrations natives installées. Le contrôle n’invente pas de connecteur entre chaque paire arbitraire de produits.
 
-La suite laisse un supervisor Druid et des tables pédagogiques ; elle remplace certaines sorties des exercices. Les événements Kafka et les documents Elastic peuvent être republiés. Les comptes dédupliqués et les sommes sont utilisés là où l’égalité exacte est attendue.
 
-Limites explicites : HTTP pgAdmin/Kafka UI ne simule pas une session graphique ; HTTP Kibana ne crée pas automatiquement de visualisation ; le contrôle Airflow ne déclenche pas le scheduler complet. Ces comportements se vérifient dans les interfaces pendant la formation. Les tests runtime n’ont pas été exécutés dans l’environnement d’édition, dépourvu de daemon Docker.
+
+Le répertoire hôte `donnees` est copié dans les volumes Spark et dans `s3://lakehouse/donnees/`. Le job `10_verify_workspace_s3.py` compare les empreintes SHA-256 via les workers Spark et vérifie les droits de l’utilisateur Spark. Les chemins internes `/opt/spark/data` et `/home/spark/data` restent disponibles.

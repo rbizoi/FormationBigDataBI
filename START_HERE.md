@@ -1,12 +1,5 @@
-# Démarrage Windows et Linux
+# Démarrage
 
-La procédure actuelle est dans [README.md](README.md). Aucun fichier Shell, PowerShell ou CMD n’est requis.
+La procédure complète et les commandes à jour sont dans [README.md](README.md).
 
-```text
-docker compose --profile full build
-docker compose --profile full up -d
-docker compose --profile checks run --rm integration-check --full
-docker compose --profile checks run --rm airflow-check
-```
-
-Portail : http://localhost:8090. Les deux commandes de contrôle doivent réussir.
+Portail : http://localhost:25021. Construire et démarrer le profil full, puis exécuter static-check, integration-check --full et airflow-check selon le README.

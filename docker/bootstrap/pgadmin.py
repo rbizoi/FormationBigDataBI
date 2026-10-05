@@ -1,4 +1,4 @@
-"""Pre-register both PostgreSQL-compatible servers in the shared pgAdmin GUI."""
+"""Pre-register the PostgreSQL source server in the shared pgAdmin GUI."""
 import json
 import os
 from pathlib import Path
@@ -7,7 +7,6 @@ from pathlib import Path
 def servers():
     return {'Servers': {
         '1': {'Name': 'PostgreSQL formation', 'Group': 'Formation', 'Host': 'postgres-source', 'Port': 5432, 'MaintenanceDB': os.environ['POSTGRES_DB'], 'Username': os.environ['POSTGRES_USER'], 'SSLMode': 'prefer'},
-        '2': {'Name': 'TimescaleDB météo', 'Group': 'Formation', 'Host': 'timescaledb', 'Port': 5432, 'MaintenanceDB': os.getenv('TIMESCALE_DB', 'meteo'), 'Username': os.getenv('TIMESCALE_USER', 'meteo'), 'SSLMode': 'prefer'},
     }}
 
 

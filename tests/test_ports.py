@@ -26,10 +26,10 @@ def test_skip_only_own_matching_service():
     assert module.owner(a, [], 'bigdata-training') is None
 
 
-def test_all_22_default_and_env_ports_are_unique_and_guarded():
+def test_all_19_default_and_env_ports_are_unique_and_guarded():
     compose = yaml.safe_load((ROOT / 'compose.yaml').read_text())
     planned = dict(line.split('=', 1) for line in (ROOT / 'ports.env').read_text().splitlines() if line and not line.startswith('#'))
-    assert len(planned) == 22 and len(set(planned.values())) == 22
+    assert len(planned) == 19 and len(set(planned.values())) == 19
     rows = []
     for name, definition in compose['services'].items():
         for published in definition.get('ports', []):
@@ -39,4 +39,4 @@ def test_all_22_default_and_env_ports_are_unique_and_guarded():
             assert planned[key] == port
             assert definition['depends_on']['ports-check']['condition'] == 'service_completed_successfully'
             rows.append({'service': name, 'host_ip': '127.0.0.1', 'published': int(port), 'target': int(target), 'protocol': 'tcp'})
-    assert len(rows) == 22 and not module.duplicate_errors(rows)
+    assert len(rows) == 19 and not module.duplicate_errors(rows)

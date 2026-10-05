@@ -24,6 +24,3 @@
 | web-log-producer | one-shot | exactement 600 + 220 événements |
 | airflow-db | optionnel | `pg_isready` |
 | airflow | optionnel | health API, DAGs, vrai `spark-submit` |
-| elasticsearch | optionnel | `_cluster/health` |
-| kibana | optionnel | `/api/status` |
-| logstash | optionnel | événement Kafka retrouvé dans Elasticsearch |

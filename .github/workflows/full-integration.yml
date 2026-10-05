@@ -1,0 +1,42 @@
+name: Full integration
+on:
+  workflow_dispatch:
+    inputs:
+      runner:
+        description: 'Docker runner label, 32 GB RAM / 8 CPU / 50 GB free recommended'
+        required: true
+        default: 'self-hosted'
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: full-integration-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  full:
+    runs-on: ${{ inputs.runner }}
+    timeout-minutes: 120
+    env:
+      COMPOSE_PROJECT_NAME: formation-ci-${{ github.run_id }}
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker compose --env-file .env --env-file ports.env --profile full --profile checks config --quiet
+      - run: docker compose --env-file .env --env-file ports.env --profile full --profile checks build
+      - run: docker compose --env-file .env --env-file ports.env --profile full up -d --wait --wait-timeout 900
+      - run: docker compose --env-file .env --env-file ports.env --profile checks run --rm static-check
+      - run: docker compose --env-file .env --env-file ports.env --profile checks run --rm integration-check --full
+      - if: ${{ !cancelled() }}
+        run: docker compose --env-file .env --env-file ports.env --profile checks run --rm airflow-check
+      - if: always()
+        run: |
+          mkdir -p runtime-reports
+          docker compose --env-file .env --env-file ports.env --profile full ps -a > runtime-reports/containers.txt
+          docker compose --env-file .env --env-file ports.env --profile full logs --no-color > runtime-reports/compose.log
+          docker run --rm -v "${COMPOSE_PROJECT_NAME}_check-reports:/reports:ro" -v "$PWD/runtime-reports:/output" alpine:3.22.5 sh -c 'cp -r /reports/. /output/'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: full-integration-reports
+          path: runtime-reports
+      - if: always()
+        run: docker compose --env-file .env --env-file ports.env --profile '*' down --volumes --remove-orphans

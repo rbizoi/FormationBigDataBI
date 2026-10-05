@@ -25,15 +25,15 @@ def visit(name,stack):
  visited.add(name)
 for name in services:visit(name,[])
 assert not list(ROOT.rglob('*.ps1')) and not list(ROOT.rglob('*.cmd')) and not list(ROOT.rglob('*.sh'))
-rows=list(csv.DictReader((ROOT/'data/input/sales.csv').open()))
+rows=list(csv.DictReader((ROOT/'donnees/input/sales.csv').open()))
 assert len(rows)==2000 and len({r['sale_id'] for r in rows})==2000
 assert all(Decimal(r['amount'])>=0 for r in rows)
-assert len(json.loads((ROOT/'data/input/customers.json').read_text()))==100
-access=(ROOT/'data/logs/access.log').read_text().splitlines();application=(ROOT/'data/logs/application.log').read_text().splitlines()
+assert len(json.loads((ROOT/'donnees/input/customers.json').read_text()))==100
+access=(ROOT/'donnees/logs/access.log').read_text().splitlines();application=(ROOT/'donnees/logs/application.log').read_text().splitlines()
 assert len(access)==600 and len(application)==220
 assert all(re.match(r'^\S+ \S+ \S+ \[.+\] "\w+ .+ HTTP/[\d.]+" \d{3} \d+ ".*" ".*" \d+$',line) for line in access)
 assert all(re.match(r'^\S+ \S+ service=\S+ trace_id=\S+ message=".*"$',line) for line in application)
 assert 'druid' in services['objectstore-init']['environment']['REQUIRED_BUCKETS'].split(',')
-assert all('full' in services[name]['profiles'] for name in ['druid-router','superset','airflow','kibana','api-producer'])
+assert all('full' in services[name]['profiles'] for name in ['druid-router','superset','airflow','api-producer'])
 print('STATIC_CONTRACTS_OK services='+str(len(services))+' sales='+str(len(rows))+' logs='+str(len(access)+len(application)))
 print('RUNTIME_NOT_EXECUTED: run integration-check and airflow-check on a Docker host')

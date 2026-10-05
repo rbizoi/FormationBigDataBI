@@ -106,7 +106,7 @@ def sync_data(client, source: Path, verify_only: bool = False) -> dict:
             raise ValueError(f"Symlink in data: {path}")
         if not path.is_file():
             continue
-        key = "data/" + path.relative_to(source).as_posix()
+        key = "donnees/" + path.relative_to(source).as_posix()
         with path.open('rb') as stream:
             digest = hashlib.file_digest(stream, 'sha256').hexdigest()
         if not verify_only:
@@ -122,9 +122,9 @@ def sync_data(client, source: Path, verify_only: bool = False) -> dict:
     if not manifest:
         raise ValueError("Empty data directory")
     if not verify_only:
-        client.put_object(Bucket="lakehouse", Key="data-manifest.json",
+        client.put_object(Bucket="lakehouse", Key="donnees-manifest.json",
                           Body=json.dumps(manifest, sort_keys=True).encode())
-    saved = json.loads(client.get_object(Bucket="lakehouse", Key="data-manifest.json")["Body"].read())
+    saved = json.loads(client.get_object(Bucket="lakehouse", Key="donnees-manifest.json")["Body"].read())
     if saved != manifest:
         raise RuntimeError("S3 manifest differs from source data")
     print(f"S3_DATA_VERIFIED files={len(manifest)}")

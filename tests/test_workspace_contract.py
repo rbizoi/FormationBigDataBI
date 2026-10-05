@@ -15,7 +15,7 @@ def test_workspace_access_and_dependency_contract():
         assert service['depends_on']['workspace-init']['condition'] == 'service_completed_successfully'
     assert services['integration-check']['user'] == 'spark'
     assert services['airflow-check']['user'] == 'airflow'
-    assert './data:/seed/data:ro' in services['objectstore-init']['volumes']
+    assert './donnees:/seed/data:ro' in services['objectstore-init']['volumes']
     for dockerfile in ['spark/runtime/Dockerfile', 'docker/airflow/Dockerfile']:
         text = (root / dockerfile).read_text()
         for name in ['data', 'jobs']:

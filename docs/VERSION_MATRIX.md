@@ -17,4 +17,3 @@
 | Trino | 483 |
 | Airflow | 3.1.7 |
 | Airflow Spark provider | selected by matching Airflow constraints |
-| Elastic Stack | 9.5.4 |

@@ -166,15 +166,6 @@ def verify_opendata_api():
   raise TimeoutError('api-producer event missing')
  finally:consumer.close()
 
-def verify_elastic():
- row=SALES[0]
- def search():
-  data=request('POST','http://elasticsearch:9200/training-sales-*/_search',json={'query':{'term':{'sale_id':int(row['sale_id'])}}}).json()
-  assert data['hits']['total']['value']>0,data
-  source=data['hits']['hits'][0]['_source']
-  assert Decimal(str(source['amount']))==Decimal(row['amount']),source
-  return source['sale_id']
- return retry(search,300)
 
 def verify_superset():
  session=requests.Session();base='http://superset:8088'
@@ -194,33 +185,33 @@ def verify_superset():
   counts[name]=count
  return counts
 
+def write_report(full):
+ failed=any(r['status']=='FAIL' for r in RESULTS)
+ report={'run':RUN,'finished_at':datetime.now(timezone.utc).isoformat(),'mode':'full' if full else 'core','status':'FAIL' if failed else 'PASS','results':RESULTS}
+ Path('/reports/integration.json').write_text(json.dumps(report,ensure_ascii=False,indent=2))
+ return 1 if failed else 0
+
 def main():
  parser=argparse.ArgumentParser();parser.add_argument('--full',action='store_true');args=parser.parse_args()
  Path('/reports').mkdir(exist_ok=True)
  for name,url in [('PostgreSQL via Trino','http://trino:8080/v1/info'),('Kafka UI','http://kafka-ui:8080'),('pgAdmin','http://pgadmin:80/misc/ping'),('RustFS console','http://objectstore:9001'),('Iceberg REST','http://iceberg-rest:8181/v1/config'),('Spark Master','http://spark-master:8080'),('Spark Worker 1','http://spark-worker-1:8081'),('Spark Worker 2','http://spark-worker-2:8081'),('JupyterLab','http://spark-jupyter:8888/login'),('Dashboard','http://dashboard:8090/health')]:
   check(name,lambda url=url:retry(lambda:http(url),180))
+ if args.full:
+  for name,url in [('Airflow','http://airflow:8080/api/v2/monitor/health'),('Druid console','http://druid-router:8888'),('Superset','http://superset:8088/health'),('OpenData API','http://mock-opendata:8000/api/events')]:
+   check(name,lambda url=url:retry(lambda:http(url),300))
+ if any(r['status']=='FAIL' for r in RESULTS):return write_report(args.full)
  check('Sources existantes -> Kafka',publish_sources)
  check('Kafka producer -> consumer',kafka_roundtrip)
  check('RustFS S3 read/write',s3_roundtrip)
  for name in ['10_verify_workspace_s3.py','00_runtime_smoke.py','01_batch_to_parquet.py','02_kafka_to_delta.py','03_build_iceberg_gold.py','04_ml_kmeans.py','05_kafka_aux_to_parquet.py','06_kafka_web_logs_to_delta.py','07_delta_web_logs_to_iceberg.py','08_web_logs_ml_kmeans.py','09_verify_existing_data.py']:
   check('Spark '+name,lambda name=name:spark_job(name))
- check('Trino -> PostgreSQL + Iceberg + S3',verify_trino)
+ check('Trino -> PostgreSQL + Iceberg + S3',lambda:retry(verify_trino,180))
  def history():
   apps=request('GET','http://spark-history:18080/api/v1/applications').json();assert apps;return len(apps)
  check('Spark event logs S3 -> History',lambda:retry(history,180))
  if args.full:
-  def timescale_data():
-   sys.path.insert(0, '/timescale')
-   from check_meteo import verify
-   return verify('/timescale-data/meteo.gzip')
-  check('Parquet météo -> TimescaleDB (toutes les lignes et colonnes)',timescale_data)
-  for name,url in [('Airflow','http://airflow:8080/api/v2/monitor/health'),('Kibana','http://kibana:5601/api/status'),('Druid console','http://druid-router:8888'),('Superset','http://superset:8088/health'),('OpenData API','http://mock-opendata:8000/api/events')]:check(name,lambda url=url:retry(lambda:http(url),300))
   check('OpenData API -> api-producer -> Kafka',verify_opendata_api)
-  check('Kafka -> Logstash -> Elasticsearch',verify_elastic)
   check('S3 + Kafka -> Druid + S3 segments',verify_druid)
   check('Superset SQL -> PostgreSQL + Trino + Druid',verify_superset)
- failed=any(r['status']=='FAIL' for r in RESULTS)
- report={'run':RUN,'finished_at':datetime.now(timezone.utc).isoformat(),'mode':'full' if args.full else 'core','status':'FAIL' if failed else 'PASS','results':RESULTS}
- Path('/reports/integration.json').write_text(json.dumps(report,ensure_ascii=False,indent=2))
- return 1 if failed else 0
+ return write_report(args.full)
 if __name__=='__main__':sys.exit(main())

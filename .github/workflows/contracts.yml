@@ -1,0 +1,22 @@
+name: Repository contracts
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  contracts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install pytest PyYAML boto3
+      - run: python tools/static_validate.py
+      - run: python -m pytest -q tests
+      - run: docker compose --env-file .env --env-file ports.env --profile full --profile checks config --quiet
+      - name: Verify committed checksums
+        run: sha256sum --quiet --check CHECKSUMS_SHA256.txt

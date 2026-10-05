@@ -1,3 +1,3 @@
-# Installation Windows / Linux
+# Windows / Docker Desktop
 
-Suivre [la procédure commune](../README.md). Windows : Docker Desktop avec moteur WSL2 et conteneurs Linux. Linux : Docker Engine avec Compose v2 ou Docker Desktop. Les commandes sont identiques ; aucun script hôte n’est utilisé.
+Utiliser Docker Desktop avec WSL2 et des conteneurs Linux, puis suivre [le README](../README.md). Toutes les commandes Compose sont identiques sous Linux, Windows et macOS. Le script de nettoyage nécessite Python 3 sur la machine hôte.

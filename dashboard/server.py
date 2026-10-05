@@ -5,7 +5,6 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 PRODUCTS = [
  ('JupyterLab','JUPYTER_PORT',25010,'','JUPYTER_TOKEN','Saisir le token ci-dessous. Notebooks dans un volume persistant.'),
  ('PostgreSQL · pgAdmin','PGADMIN_PORT',25017,'PGADMIN_EMAIL','PGADMIN_PASSWORD','Serveur SQL postgres-source:5432. Base {POSTGRES_DB} ; utilisateur SQL {POSTGRES_USER} ; mot de passe SQL {POSTGRES_PASSWORD}.'),
- ('TimescaleDB météo · pgAdmin','PGADMIN_PORT',25017,'PGADMIN_EMAIL','PGADMIN_PASSWORD','Dans pgAdmin, ouvrir le serveur « TimescaleDB météo ». Hôte timescaledb:5432 ; base {TIMESCALE_DB} ; utilisateur SQL {TIMESCALE_USER} ; mot de passe SQL {TIMESCALE_PASSWORD}. Profil timeseries ou full.'),
  ('RustFS · S3','S3_CONSOLE_PORT',25004,'S3_ACCESS_KEY','S3_SECRET_KEY','Buckets Parquet, Delta, Iceberg et Druid.'),
  ('Spark Master','SPARK_MASTER_UI_PORT',25006,'','','Workers et applications.'),
  ('Spark Worker 1','SPARK_WORKER1_UI_PORT',25007,'','','Exécuteurs du premier worker.'),
@@ -17,9 +16,7 @@ PRODUCTS = [
  ('Kafka UI','KAFKA_UI_PORT',25018,'','','Topics, messages et consommateurs.'),
  ('Trino','TRINO_PORT',25012,'','','Utilisateur libre : formation, sans mot de passe. Supervision SQL ; requêtes dans Superset ou Jupyter.'),
  ('Airflow','AIRFLOW_PORT',25014,'','','Profil orchestration ou full. Mode pédagogique all_admins : sans authentification.'),
- ('Kibana · Elastic / Logstash','KIBANA_PORT',25016,'','','Profil elastic ou full. Exploration des logs. Logstash : données indexées et logs Docker.'),
  ('Iceberg REST · API','ICEBERG_REST_PORT',25005,'','','API /v1/config. Tables consultables dans Superset, Trino ou Jupyter.'),
- ('Elasticsearch · API','ELASTICSEARCH_PORT',25015,'','','Profil elastic ou full. Interface utilisateur : Kibana.'),
 ]
 def render():
  cards=[]
@@ -28,7 +25,7 @@ def render():
   esc=html.escape
   cards.append(f'<article><h2>{esc(name)}</h2><p>{esc(description.format_map(os.environ))}</p><dl><dt>Utilisateur</dt><dd>{esc(os.getenv(user,"Sans compte"))}</dd><dt>{"Token" if secret=="JUPYTER_TOKEN" else "Mot de passe"}</dt><dd><code>{esc(os.getenv(secret,"Aucun"))}</code></dd></dl><a href="{url}" target="_blank" rel="noopener">Ouvrir ↗</a><small>{url}</small></article>')
  reports=[]
- for directory,filename in [('/reports','ports-check.json'),('/reports','integration.json'),('/reports','airflow-check.json'),('/timescale-reports','timescale-check.json')]:
+ for directory,filename in [('/reports','ports-check.json'),('/reports','integration.json'),('/reports','airflow-check.json')]:
   path=Path(directory)/filename
   if path.exists():
    try: reports.append('<h3>'+filename+'</h3><pre>'+html.escape(json.dumps(json.loads(path.read_text()),ensure_ascii=False,indent=2))+'</pre>')

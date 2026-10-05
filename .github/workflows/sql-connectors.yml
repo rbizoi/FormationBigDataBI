@@ -1,0 +1,24 @@
+name: SQL connectors
+on:
+  push:
+    branches: [master]
+    paths: ['compose.yaml', 'trino/**', 'docker/objectstore-init/**', 'checks/sql_connectors.py', '.github/workflows/sql-connectors.yml']
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  sql:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: docker compose --env-file .env --env-file ports.env up -d --build --wait --wait-timeout 600 trino
+      - run: python checks/sql_connectors.py
+      - if: always()
+        run: docker compose --env-file .env --env-file ports.env logs --tail=100 trino iceberg-rest objectstore postgres-source
+      - if: always()
+        run: docker compose --env-file .env --env-file ports.env --profile '*' down --volumes --remove-orphans

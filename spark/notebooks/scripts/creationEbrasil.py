@@ -1,6 +1,6 @@
 def creationParquetEbrasil(rep_source, rep_dest):
     """
-        Création des fichiers parquet à partir des fichiers .csv du répertoire « data/ebrasil »
+        Création des fichiers parquet à partir des fichiers .csv du répertoire « donnees/ebrasil »
         rep_source : répertoire source qui doit contenir impérativement les 9 fichiers csv
                                 olist_customers_dataset.csv
                                 olist_order_items_dataset.csv

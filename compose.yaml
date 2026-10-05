@@ -7,7 +7,6 @@ services:
     restart: 'no'
     user: 0:0
     environment:
-      TIMESCALE_PORT: ${TIMESCALE_PORT:-25000}
       POSTGRES_PORT: ${POSTGRES_PORT:-25001}
       KAFKA_EXTERNAL_PORT: ${KAFKA_EXTERNAL_PORT:-25002}
       S3_API_PORT: ${S3_API_PORT:-25003}
@@ -22,8 +21,6 @@ services:
       TRINO_PORT: ${TRINO_PORT:-25012}
       MOCK_OPENDATA_PORT: ${MOCK_OPENDATA_PORT:-25013}
       AIRFLOW_PORT: ${AIRFLOW_PORT:-25014}
-      ELASTICSEARCH_PORT: ${ELASTICSEARCH_PORT:-25015}
-      KIBANA_PORT: ${KIBANA_PORT:-25016}
       PGADMIN_PORT: ${PGADMIN_PORT:-25017}
       KAFKA_UI_PORT: ${KAFKA_UI_PORT:-25018}
       DRUID_PORT: ${DRUID_PORT:-25019}
@@ -34,80 +31,8 @@ services:
     - .:/project:ro
     - /var/run/docker.sock:/var/run/docker.sock
     - check-reports:/reports
-    networks: [training-net]
-  timescaledb:
-    depends_on:
-      ports-check:
-        condition: service_completed_successfully
-    image: timescale/timescaledb:2.30.2-pg17@sha256:b346edcdb51a1fd6020e3965e0bd1c9f3406fa6d5fbce1e28f4852587ef934e2
-    profiles: [timeseries, full, checks]
-    restart: unless-stopped
-    mem_limit: 1g
-    environment:
-      POSTGRES_DB: ${TIMESCALE_DB:-meteo}
-      POSTGRES_USER: ${TIMESCALE_USER:-meteo}
-      POSTGRES_PASSWORD: ${TIMESCALE_PASSWORD:-formation}
-      TIMESCALEDB_TELEMETRY: 'off'
-      TS_TUNE_MEMORY: 1GB
-      TS_TUNE_NUM_CPUS: '2'
-    ports:
-    - 127.0.0.1:${TIMESCALE_PORT:-25000}:5432
-    volumes:
-    - timescaledb-data:/var/lib/postgresql/data
-    healthcheck:
-      test: [CMD-SHELL, 'pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"']
-      interval: 5s
-      timeout: 5s
-      retries: 60
-      start_period: 20s
-    networks: [training-net]
-  timescale-reports-init:
-    image: python:3.12-slim
-    profiles: [timeseries, full, checks]
-    user: 0:0
-    restart: 'no'
-    entrypoint: [python, -c]
-    command: ["import os; os.chown('/reports',10001,0); os.chmod('/reports',0o2775)"]
-    volumes:
-    - timescale-reports:/reports
-    networks: [training-net]
-  timescale-load:
-    image: bigdata-training/timescale-loader:local
-    build:
-      context: ./docker/timescale-load
-    profiles: [timeseries, full]
-    restart: 'no'
-    mem_limit: 512m
-    environment: &timescale-loader-env
-      PGHOST: timescaledb
-      PGPORT: '5432'
-      PGDATABASE: ${TIMESCALE_DB:-meteo}
-      PGUSER: ${TIMESCALE_USER:-meteo}
-      PGPASSWORD: ${TIMESCALE_PASSWORD:-formation}
-    volumes:
-    - ./data/meteo.gzip:/data/meteo.gzip:ro
-    depends_on:
-      timescaledb:
-        condition: service_healthy
-    networks: [training-net]
-  timescale-check:
-    image: bigdata-training/timescale-loader:local
-    build:
-      context: ./docker/timescale-load
-    profiles: [checks]
-    restart: 'no'
-    mem_limit: 512m
-    entrypoint: [python, /app/check_meteo.py]
-    environment: *timescale-loader-env
-    volumes:
-    - ./data/meteo.gzip:/data/meteo.gzip:ro
-    - timescale-reports:/reports
-    depends_on:
-      timescaledb:
-        condition: service_healthy
-      timescale-reports-init:
-        condition: service_completed_successfully
-    networks: [training-net]
+    networks:
+    - training-net
   workspace-init:
     image: bigdata-training/spark-runtime:local
     build:
@@ -115,15 +40,18 @@ services:
       dockerfile: spark/runtime/Dockerfile
     user: 0:0
     restart: 'no'
-    entrypoint: [python3, /workspace-init.py]
+    entrypoint:
+    - python3
+    - /workspace-init.py
     volumes:
     - ./docker/workspace-init.py:/workspace-init.py:ro
-    - ./data:/seed/data:ro
+    - ./donnees:/seed/data:ro
     - ./spark/jobs:/seed/jobs:ro
     - spark-data:/opt/spark/data
     - spark-jobs:/opt/spark/jobs
     - check-reports:/reports
-    networks: [training-net]
+    networks:
+    - training-net
   postgres-source:
     depends_on:
       ports-check:
@@ -235,7 +163,6 @@ services:
     entrypoint:
     - python
     - /app/kafka_init.py
-    volumes: []
     networks:
     - training-net
     build:
@@ -304,7 +231,7 @@ services:
       REQUIRED_BUCKETS: warehouse,lakehouse,checkpoints,druid
       DATA_DIR: /seed/data
     volumes:
-    - ./data:/seed/data:ro
+    - ./donnees:/seed/data:ro
     networks:
     - training-net
   iceberg-catalog-permissions:
@@ -361,7 +288,7 @@ services:
   spark-master:
     image: bigdata-training/spark-runtime:local
     restart: unless-stopped
-    environment: &id001
+    environment:
       AWS_ACCESS_KEY_ID: ${S3_ACCESS_KEY:-labadmin}
       AWS_SECRET_ACCESS_KEY: ${S3_SECRET_KEY:-TRAINING_ONLY_S3_PASSWORD}
       AWS_REGION: ${AWS_REGION:-us-east-1}
@@ -377,7 +304,7 @@ services:
     - spark-jobs:/opt/spark/jobs
     - ./spark/notebooks:/opt/spark/notebooks
     - spark-data:/opt/spark/data
-    networks: &id002
+    networks: &id001
     - training-net
     build:
       context: .
@@ -419,14 +346,23 @@ services:
   spark-worker-1:
     image: bigdata-training/spark-runtime:local
     restart: unless-stopped
-    environment: *id001
+    environment:
+      AWS_ACCESS_KEY_ID: ${S3_ACCESS_KEY:-labadmin}
+      AWS_SECRET_ACCESS_KEY: ${S3_SECRET_KEY:-TRAINING_ONLY_S3_PASSWORD}
+      AWS_REGION: ${AWS_REGION:-us-east-1}
+      AWS_DEFAULT_REGION: ${AWS_REGION:-us-east-1}
+      SPARK_NO_DAEMONIZE: 'true'
+      PYSPARK_PYTHON: python3
+      SPARK_LOG_DIR: /tmp/spark-logs
+      SPARK_PID_DIR: /tmp/spark-pids
+      SPARK_DAEMON_MEMORY: 512m
     volumes:
     - ./spark/conf/spark-defaults.conf:/opt/spark/conf/spark-defaults.conf:ro
     - ./spark/conf/log4j2.properties:/opt/spark/conf/log4j2.properties:ro
     - spark-jobs:/opt/spark/jobs
     - ./spark/notebooks:/opt/spark/notebooks
     - spark-data:/opt/spark/data
-    networks: *id002
+    networks: *id001
     hostname: spark-worker-1
     mem_limit: 1536m
     command:
@@ -464,14 +400,23 @@ services:
   spark-worker-2:
     image: bigdata-training/spark-runtime:local
     restart: unless-stopped
-    environment: *id001
+    environment:
+      AWS_ACCESS_KEY_ID: ${S3_ACCESS_KEY:-labadmin}
+      AWS_SECRET_ACCESS_KEY: ${S3_SECRET_KEY:-TRAINING_ONLY_S3_PASSWORD}
+      AWS_REGION: ${AWS_REGION:-us-east-1}
+      AWS_DEFAULT_REGION: ${AWS_REGION:-us-east-1}
+      SPARK_NO_DAEMONIZE: 'true'
+      PYSPARK_PYTHON: python3
+      SPARK_LOG_DIR: /tmp/spark-logs
+      SPARK_PID_DIR: /tmp/spark-pids
+      SPARK_DAEMON_MEMORY: 512m
     volumes:
     - ./spark/conf/spark-defaults.conf:/opt/spark/conf/spark-defaults.conf:ro
     - ./spark/conf/log4j2.properties:/opt/spark/conf/log4j2.properties:ro
     - spark-jobs:/opt/spark/jobs
     - ./spark/notebooks:/opt/spark/notebooks
     - spark-data:/opt/spark/data
-    networks: *id002
+    networks: *id001
     hostname: spark-worker-2
     mem_limit: 1536m
     command:
@@ -509,14 +454,23 @@ services:
   spark-history:
     image: bigdata-training/spark-runtime:local
     restart: unless-stopped
-    environment: *id001
+    environment:
+      AWS_ACCESS_KEY_ID: ${S3_ACCESS_KEY:-labadmin}
+      AWS_SECRET_ACCESS_KEY: ${S3_SECRET_KEY:-TRAINING_ONLY_S3_PASSWORD}
+      AWS_REGION: ${AWS_REGION:-us-east-1}
+      AWS_DEFAULT_REGION: ${AWS_REGION:-us-east-1}
+      SPARK_NO_DAEMONIZE: 'true'
+      PYSPARK_PYTHON: python3
+      SPARK_LOG_DIR: /tmp/spark-logs
+      SPARK_PID_DIR: /tmp/spark-pids
+      SPARK_DAEMON_MEMORY: 512m
     volumes:
     - ./spark/conf/spark-defaults.conf:/opt/spark/conf/spark-defaults.conf:ro
     - ./spark/conf/log4j2.properties:/opt/spark/conf/log4j2.properties:ro
     - spark-jobs:/opt/spark/jobs
     - ./spark/notebooks:/opt/spark/notebooks
     - spark-data:/opt/spark/data
-    networks: *id002
+    networks: *id001
     hostname: spark-history
     mem_limit: 1g
     command:
@@ -579,7 +533,7 @@ services:
     - spark-jobs:/opt/spark/jobs
     - spark-data:/opt/spark/data
     - spark-notebooks:/opt/spark/notebooks
-    networks: *id002
+    networks: *id001
     hostname: spark-jupyter
     user: spark
     mem_limit: 2g
@@ -634,8 +588,6 @@ services:
         condition: service_completed_successfully
       iceberg-rest:
         condition: service_healthy
-      spark-master:
-        condition: service_healthy
     environment:
       S3_ACCESS_KEY: ${S3_ACCESS_KEY:-labadmin}
       S3_SECRET_KEY: ${S3_SECRET_KEY:-TRAINING_ONLY_S3_PASSWORD}
@@ -672,7 +624,7 @@ services:
     environment:
       DATA_FILE: /data/opendata/sample.json
     volumes:
-    - ./data:/data:ro
+    - ./donnees:/data:ro
     ports:
     - 127.0.0.1:${MOCK_OPENDATA_PORT:-25013}:8000
     healthcheck:
@@ -715,6 +667,7 @@ services:
       context: ./docker/file-producer
     profiles:
     - seed
+    - full
     restart: 'no'
     mem_limit: 384m
     depends_on:
@@ -724,7 +677,7 @@ services:
       KAFKA_BOOTSTRAP_SERVERS: kafka:19092
       DATA_DIR: /data/input
     volumes:
-    - ./data:/data:ro
+    - ./donnees:/data:ro
     networks:
     - training-net
   postgres-producer:
@@ -733,6 +686,7 @@ services:
       context: ./docker/postgres-producer
     profiles:
     - seed
+    - full
     restart: 'no'
     mem_limit: 256m
     depends_on:
@@ -755,6 +709,7 @@ services:
       context: ./docker/web-log-producer
     profiles:
     - logs
+    - full
     restart: 'no'
     mem_limit: 256m
     depends_on:
@@ -767,7 +722,7 @@ services:
       LOG_DATA_DIR: /data/logs
       LOG_DELAY_MS: ${LOG_DELAY_MS:-0}
     volumes:
-    - ./data:/data:ro
+    - ./donnees:/data:ro
     networks:
     - training-net
   airflow-db:
@@ -847,78 +802,6 @@ services:
     - spark-jobs:/opt/spark/jobs:ro
     - ./spark/conf:/opt/spark/conf:ro
     - spark-data:/opt/spark/data:ro
-    networks:
-    - training-net
-  elasticsearch:
-    depends_on:
-      ports-check:
-        condition: service_completed_successfully
-    image: docker.elastic.co/elasticsearch/elasticsearch:9.5.4
-    profiles:
-    - elastic
-    - full
-    restart: unless-stopped
-    mem_limit: 1536m
-    environment:
-      discovery.type: single-node
-      xpack.security.enabled: 'false'
-      xpack.security.enrollment.enabled: 'false'
-      index.store.type: niofs
-      ES_JAVA_OPTS: -Xms768m -Xmx768m
-    ulimits:
-      nofile:
-        soft: 65535
-        hard: 65535
-    ports:
-    - 127.0.0.1:${ELASTICSEARCH_PORT:-25015}:9200
-    volumes:
-    - elasticsearch-data:/usr/share/elasticsearch/data
-    healthcheck:
-      test:
-      - CMD-SHELL
-      - curl -fsS http://127.0.0.1:9200/_cluster/health >/dev/null
-      interval: 10s
-      timeout: 5s
-      retries: 45
-      start_period: 60s
-    networks:
-    - training-net
-  kibana:
-    image: docker.elastic.co/kibana/kibana:9.5.4
-    profiles:
-    - elastic
-    - full
-    restart: unless-stopped
-    mem_limit: 1536m
-    depends_on:
-      ports-check:
-        condition: service_completed_successfully
-      elasticsearch:
-        condition: service_healthy
-    environment:
-      ELASTICSEARCH_HOSTS: http://elasticsearch:9200
-      NODE_OPTIONS: --max-old-space-size=1024
-    ports:
-    - 127.0.0.1:${KIBANA_PORT:-25016}:5601
-    networks:
-    - training-net
-  logstash:
-    image: docker.elastic.co/logstash/logstash:9.5.4
-    profiles:
-    - elastic
-    - full
-    restart: unless-stopped
-    mem_limit: 768m
-    depends_on:
-      kafka-init:
-        condition: service_completed_successfully
-      elasticsearch:
-        condition: service_healthy
-    environment:
-      LS_JAVA_OPTS: -Xms256m -Xmx256m
-      XPACK_MONITORING_ENABLED: 'false'
-    volumes:
-    - ./logstash/pipeline:/usr/share/logstash/pipeline:ro
     networks:
     - training-net
   notebooks-init:
@@ -1223,7 +1106,7 @@ services:
       druid_router_managementProxy_enabled: 'true'
     volumes:
     - druid-middlemanager-var:/opt/druid/var
-    - ./data:/opt/training/data:ro
+    - ./donnees:/opt/training/data:ro
     depends_on:
       druid-db:
         condition: service_healthy
@@ -1332,7 +1215,7 @@ services:
     - analytics
     - full
     restart: 'no'
-    environment: &id003
+    environment:
       SUPERSET_CONFIG_PATH: /app/lab/superset_config.py
       SUPERSET_SECRET_KEY: ${SUPERSET_SECRET_KEY:-INSECURE_TRAINING_ONLY_CHANGE_ME_SUPERSET_SECRET}
       SUPERSET_DB_PASSWORD: ${SUPERSET_DB_PASSWORD:-superset}
@@ -1357,7 +1240,15 @@ services:
     - analytics
     - full
     restart: unless-stopped
-    environment: *id003
+    environment:
+      SUPERSET_CONFIG_PATH: /app/lab/superset_config.py
+      SUPERSET_SECRET_KEY: ${SUPERSET_SECRET_KEY:-INSECURE_TRAINING_ONLY_CHANGE_ME_SUPERSET_SECRET}
+      SUPERSET_DB_PASSWORD: ${SUPERSET_DB_PASSWORD:-superset}
+      SUPERSET_ADMIN_USER: ${SUPERSET_ADMIN_USER:-admin}
+      SUPERSET_ADMIN_PASSWORD: ${SUPERSET_ADMIN_PASSWORD:-formation}
+      POSTGRES_DB: ${POSTGRES_DB:-formation}
+      POSTGRES_USER: ${POSTGRES_USER:-formation}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-formation}
     entrypoint:
     - gunicorn
     command:
@@ -1404,10 +1295,6 @@ services:
     - python3
     - /checks/integration.py
     environment:
-      PGHOST: timescaledb
-      PGDATABASE: ${TIMESCALE_DB:-meteo}
-      PGUSER: ${TIMESCALE_USER:-meteo}
-      PGPASSWORD: ${TIMESCALE_PASSWORD:-formation}
       AWS_ACCESS_KEY_ID: ${S3_ACCESS_KEY:-labadmin}
       AWS_SECRET_ACCESS_KEY: ${S3_SECRET_KEY:-TRAINING_ONLY_S3_PASSWORD}
       AWS_REGION: ${AWS_REGION:-us-east-1}
@@ -1429,8 +1316,6 @@ services:
     - spark-jobs:/opt/spark/jobs
     - spark-data:/opt/spark/data
     - ./checks:/checks:ro
-    - ./docker/timescale-load:/timescale:ro
-    - ./data/meteo.gzip:/timescale-data/meteo.gzip:ro
     - check-reports:/reports
     - ./docker:/producers:ro
     networks:
@@ -1486,9 +1371,6 @@ services:
     - python
     - /app/server.py
     environment:
-      TIMESCALE_DB: ${TIMESCALE_DB:-meteo}
-      TIMESCALE_USER: ${TIMESCALE_USER:-meteo}
-      TIMESCALE_PASSWORD: ${TIMESCALE_PASSWORD:-formation}
       POSTGRES_DB: ${POSTGRES_DB:-formation}
       POSTGRES_USER: ${POSTGRES_USER:-formation}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-formation}
@@ -1510,17 +1392,14 @@ services:
       JUPYTER_PORT: ${JUPYTER_PORT:-25010}
       TRINO_PORT: ${TRINO_PORT:-25012}
       AIRFLOW_PORT: ${AIRFLOW_PORT:-25014}
-      KIBANA_PORT: ${KIBANA_PORT:-25016}
       DRUID_PORT: ${DRUID_PORT:-25019}
       SUPERSET_PORT: ${SUPERSET_PORT:-25020}
       ICEBERG_REST_PORT: ${ICEBERG_REST_PORT:-25005}
-      ELASTICSEARCH_PORT: ${ELASTICSEARCH_PORT:-25015}
     ports:
     - 127.0.0.1:${DASHBOARD_PORT:-25021}:8090
     volumes:
     - ./dashboard:/app:ro
     - check-reports:/reports:ro
-    - timescale-reports:/timescale-reports:ro
     networks:
     - training-net
   pgadmin-config:
@@ -1530,9 +1409,6 @@ services:
     - python
     - /init/pgadmin.py
     environment:
-      TIMESCALE_DB: ${TIMESCALE_DB:-meteo}
-      TIMESCALE_USER: ${TIMESCALE_USER:-meteo}
-      TIMESCALE_PASSWORD: ${TIMESCALE_PASSWORD:-formation}
       POSTGRES_USER: ${POSTGRES_USER:-formation}
       POSTGRES_DB: ${POSTGRES_DB:-formation}
     volumes:
@@ -1555,8 +1431,6 @@ networks:
   training-net:
     driver: bridge
 volumes:
-  timescaledb-data: null
-  timescale-reports: null
   spark-data: null
   spark-jobs: null
   check-reports: null
@@ -1565,7 +1439,6 @@ volumes:
   objectstore-data: null
   iceberg-catalog-data: null
   airflow-db-data: null
-  elasticsearch-data: null
   spark-notebooks: null
   airflow-logs: null
   pgadmin-data: null
