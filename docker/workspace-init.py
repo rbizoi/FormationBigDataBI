@@ -19,8 +19,8 @@ def initialize(source, target, uid):
 
 if __name__ == '__main__':
     uid = pwd.getpwnam('spark').pw_uid
-    for name in ('data', 'jobs'):
-        initialize('/seed/' + name, '/opt/spark/' + name, uid)
+    initialize('/seed/donnees', '/opt/spark/donnees', uid)
+    initialize('/seed/jobs', '/opt/spark/jobs', uid)
     Path('/reports').mkdir(exist_ok=True)
     os.chown('/reports', uid, 0)
     os.chmod('/reports', 0o2775)

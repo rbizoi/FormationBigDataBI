@@ -7,7 +7,7 @@ from pathlib import Path
 from pyspark.sql import SparkSession, functions as F
 spark=SparkSession.builder.appName('verify-existing-training-data').getOrCreate()
 spark.sparkContext.setLogLevel('WARN')
-rows=list(csv.DictReader(Path('/opt/spark/data/input/sales.csv').open()))
+rows=list(csv.DictReader(Path('/opt/spark/donnees/input/sales.csv').open()))
 expected=len(rows)
 expected_amount=sum(Decimal(r['amount']) for r in rows)
 bronze=spark.read.parquet('s3a://lakehouse/bronze/sales')
@@ -16,7 +16,7 @@ for name,frame in [('bronze',bronze),('gold',gold)]:
  assert frame.count()==expected,(name,frame.count(),expected)
  amount=frame.agg(F.sum('amount')).first()[0]
  assert abs(Decimal(str(amount))-expected_amount)<Decimal('0.02'),(name,amount,expected_amount)
-customers=json.loads(Path('/opt/spark/data/input/customers.json').read_text())
+customers=json.loads(Path('/opt/spark/donnees/input/customers.json').read_text())
 assert spark.read.parquet('s3a://lakehouse/bronze/customers').count()==len(customers)
 kafka=spark.read.format('kafka').option('kafka.bootstrap.servers','kafka:19092').option('subscribe','sales.raw').option('startingOffsets','earliest').option('endingOffsets','latest').load()
 ids=kafka.select(F.get_json_object(F.col('value').cast('string'),'$.sale_id').cast('long').alias('sale_id')).distinct()
@@ -30,7 +30,7 @@ with psycopg2.connect(host='postgres-source',dbname=os.getenv('POSTGRES_DB','for
 kafka_ids={r[0] for r in ids.collect()}
 delta_ids={r[0] for r in silver.select('sale_id').distinct().collect()}
 assert pg_ids <= kafka_ids and pg_ids <= delta_ids,(pg_ids-kafka_ids,pg_ids-delta_ids)
-raw_count=sum(1 for _ in Path('/opt/spark/data/logs/access.log').open())+sum(1 for _ in Path('/opt/spark/data/logs/application.log').open())
+raw_count=sum(1 for _ in Path('/opt/spark/donnees/logs/access.log').open())+sum(1 for _ in Path('/opt/spark/donnees/logs/application.log').open())
 logs=spark.read.format('delta').load('s3a://lakehouse/delta/web_logs_silver')
 assert logs.select('source_file','line_number','log_type').distinct().count()==raw_count
 assert spark.table('iceberg.logs.events').count()==raw_count
@@ -39,7 +39,7 @@ aux=spark.read.parquet('s3a://lakehouse/bronze/kafka_aux')
 assert {'customers.raw','catalog.raw','opendata.raw'} <= {r[0] for r in aux.select('kafka_topic').distinct().collect()}
 for topic,key,expected_ids in [
  ('customers.raw','customer_id',{int(r['customer_id']) for r in customers}),
- ('catalog.raw','product_id',{int(i) for i in pd.read_excel('/opt/spark/data/input/catalog.xlsx')['product_id']})
+ ('catalog.raw','product_id',{int(i) for i in pd.read_excel('/opt/spark/donnees/input/catalog.xlsx')['product_id']})
 ]:
  observed={int(r[0]) for r in aux.filter(F.col('kafka_topic')==topic).select(F.get_json_object('payload_json','$.'+key).alias('id')).filter('id IS NOT NULL').distinct().collect()}
  assert expected_ids <= observed,(topic,expected_ids-observed)

@@ -26,4 +26,4 @@ Les contrôles portent sur des échanges supportés, avec des données existante
 
 
 
-Le répertoire hôte `donnees` est copié dans les volumes Spark et dans `s3://lakehouse/donnees/`. Le job `10_verify_workspace_s3.py` compare les empreintes SHA-256 via les workers Spark et vérifie les droits de l’utilisateur Spark. Les chemins internes `/opt/spark/data` et `/home/spark/data` restent disponibles.
+Le répertoire hôte `donnees` est copié dans les volumes Spark et dans `s3://lakehouse/donnees/`. Le job `10_verify_workspace_s3.py` compare les empreintes SHA-256 via les workers Spark et vérifie les droits de l’utilisateur Spark. Les chemins internes `/opt/spark/donnees` et `/home/spark/donnees` restent disponibles.

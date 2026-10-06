@@ -49,7 +49,7 @@ Ouvrez `01_demarrage_spark.ipynb`, puis exécutez les cellules. La variable
 
 Les notebooks sont stockés dans `spark/notebooks` sur Windows. Ils survivent à
 la recréation du conteneur. Les données d'exemple sont disponibles en lecture
-dans `/opt/spark/data`; les résultats Lakehouse doivent être écrits dans S3.
+dans `/opt/spark/donnees`; les résultats Lakehouse doivent être écrits dans S3.
 
 ## Interface Spark Jobs — port 4040
 
