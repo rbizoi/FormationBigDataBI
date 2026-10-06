@@ -4,6 +4,8 @@ Plateforme pédagogique Docker Compose pour Windows (Docker Desktop/WSL2), Linux
 
 Les données du dépôt sont dans **`donnees/`**. Les chemins internes Spark `/opt/spark/donnees` et `/home/spark/donnees` restent inchangés et accessibles à l'utilisateur `spark`. Airflow les monte en lecture seule. L'initialisation copie les fichiers dans les volumes Spark et dans **`s3://lakehouse/donnees/`**, avec un manifeste SHA-256 `donnees-manifest.json`. Les fichiers météo restent disponibles pour les notebooks ; aucun serveur SQL météo spécifique n'est installé.
 
+<img src="https://raw.githubusercontent.com/rbizoi/FormationBigDataBI/refs/heads/master/images/architecture.png" width="1024">
+
 ## 1. Préparation
 
 Installer Git, Docker Engine ou Docker Desktop et Docker Compose v2. Utiliser des conteneurs Linux. Pour l'ensemble de la plateforme, prévoir **32 Go de RAM et 8 CPU** disponibles pour Docker, et au moins **50 Go d'espace libre** pour les images, les volumes et les données. Une machine plus petite peut exécuter le cœur, mais le profil complet mobilise plusieurs JVM.
