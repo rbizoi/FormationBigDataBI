@@ -9,9 +9,14 @@ import sys
 import time
 from typing import Iterable
 
-import boto3
-from botocore.client import Config
-from botocore.exceptions import ClientError, EndpointConnectionError
+def _aws_exception_types(*names):
+    """Load botocore exception classes only when handling AWS operations."""
+    try:
+        from botocore import exceptions
+    except ImportError:
+        return ()
+    return tuple(getattr(exceptions, name) for name in names)
+
 
 MARKER_KEY = ".bigdata-init"
 MARKER_BODY = b"bigdata-training-objectstore-init\n"
@@ -27,6 +32,11 @@ def required_buckets(value: str | None = None) -> list[str]:
 
 
 def make_client():
+    try:
+        import boto3
+        from botocore.client import Config
+    except ImportError as exc:
+        raise RuntimeError("boto3 and botocore are required for S3 operations") from exc
     return boto3.client(
         "s3",
         endpoint_url=os.getenv("S3_ENDPOINT", "http://objectstore:9000"),
@@ -47,7 +57,9 @@ def create_bucket_if_missing(client, bucket: str) -> None:
         return
     try:
         client.create_bucket(Bucket=bucket)
-    except ClientError as exc:
+    except Exception as exc:
+        if not isinstance(exc, _aws_exception_types("ClientError")):
+            raise
         code = str(exc.response.get("Error", {}).get("Code", ""))
         if code not in {"BucketAlreadyOwnedByYou", "BucketAlreadyExists"}:
             raise
@@ -75,7 +87,9 @@ def ensure_buckets(client, buckets: Iterable[str], attempts: int = 30, delay_sec
             if "lakehouse" in buckets:
                 ensure_lakehouse_prefixes(client)
             return
-        except (ClientError, EndpointConnectionError) as exc:
+        except Exception as exc:
+            if not isinstance(exc, _aws_exception_types("ClientError", "EndpointConnectionError")):
+                raise
             last_error = exc
             print(f"[objectstore-init] attempt={attempt}/{attempts} error={exc}", file=sys.stderr)
             if attempt < attempts:
