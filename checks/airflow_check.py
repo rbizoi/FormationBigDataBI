@@ -2,12 +2,14 @@
 import json, subprocess, sys, os
 from pathlib import Path
 from datetime import datetime, timezone
-from airflow.models.dagbag import DagBag
 result={'finished_at':None,'status':'FAIL','checks':[]}
 try:
- bag=DagBag('/opt/airflow/dags',include_examples=False)
- assert not bag.import_errors,bag.import_errors
- assert {'bigdata_training_pipeline','web_logs_training_pipeline'} <= set(bag.dags)
+ dag_check = ("from airflow.models.dagbag import DagBag; "
+              "bag=DagBag('/opt/airflow/dags', include_examples=False); "
+              "assert not bag.import_errors, bag.import_errors; "
+              "assert {'bigdata_training_pipeline','web_logs_training_pipeline'} <= set(bag.dags); "
+              "print('DAG imports OK')")
+ subprocess.run([sys.executable, '-c', dag_check], check=True, timeout=180)
  result['checks'].append('DAG imports OK')
  with Path('/reports/airflow-spark.log').open('w') as log:
   for job in ['10_verify_workspace_s3.py','00_runtime_smoke.py','09_verify_existing_data.py']:
