@@ -20,7 +20,7 @@ sales_schema = T.StructType([
 sales = (
     spark.read.option("header", True)
     .schema(sales_schema)
-    .csv("/opt/spark/data/input/sales.csv")
+    .csv("/opt/spark/donnees/input/sales.csv")
     .withColumn("event_ts", F.to_timestamp("event_ts"))
     .withColumn("event_date", F.to_date("event_ts"))
     .withColumn("ingested_at", F.current_timestamp())
@@ -49,7 +49,7 @@ print(f"[QUALITY] total={total_count} valid={valid_count} invalid={invalid_count
 
 customers = (
     spark.read.option("multiLine", True)
-    .json("/opt/spark/data/input/customers.json")
+    .json("/opt/spark/donnees/input/customers.json")
     .select(
         F.col("customer_id").cast("long").alias("customer_id"),
         "first_name", "last_name", "country", "segment"

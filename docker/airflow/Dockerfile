@@ -71,7 +71,7 @@ RUN set -eux; \
     rm -f /tmp/spark-version.txt
 
 USER root
-RUN mkdir -p /home/spark /opt/spark/data /opt/spark/jobs \
-    && ln -s /opt/spark/data /home/spark/data \
+RUN mkdir -p /home/spark /opt/spark/donnees /opt/spark/jobs \
+    && ln -s /opt/spark/donnees /home/spark/donnees \
     && ln -s /opt/spark/jobs /home/spark/jobs
 USER airflow

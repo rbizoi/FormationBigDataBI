@@ -63,11 +63,11 @@ def publish_sources():
  from kafka_ready import wait_ready
  from confluent_kafka.admin import AdminClient
  wait_ready(AdminClient({'bootstrap.servers':'kafka:19092'}), ['sales.raw','customers.raw','catalog.raw','opendata.raw','application.logs','web.logs.raw'])
- env=dict(os.environ,DATA_DIR='/opt/spark/data/input',LOG_DATA_DIR='/opt/spark/data/logs',KAFKA_BOOTSTRAP_SERVERS='kafka:19092',PGHOST='postgres-source',PGDATABASE=os.environ['POSTGRES_DB'],PGUSER=os.environ['POSTGRES_USER'],PGPASSWORD=os.environ['POSTGRES_PASSWORD'])
+ env=dict(os.environ,DATA_DIR='/opt/spark/donnees/input',LOG_DATA_DIR='/opt/spark/donnees/logs',KAFKA_BOOTSTRAP_SERVERS='kafka:19092',PGHOST='postgres-source',PGDATABASE=os.environ['POSTGRES_DB'],PGUSER=os.environ['POSTGRES_USER'],PGPASSWORD=os.environ['POSTGRES_PASSWORD'])
  for name in ['file-producer','postgres-producer','web-log-producer']:
   subprocess.run([sys.executable,f'/producers/{name}/producer.py'],env=env,check=True,timeout=180)
  # The existing OpenData file feeds Kafka even in core mode, so no external API is needed.
- payload=json.loads(Path('/opt/spark/data/opendata/sample.json').read_text())
+ payload=json.loads(Path('/opt/spark/donnees/opendata/sample.json').read_text())
  events=payload if isinstance(payload,list) else payload.get('events',payload.get('records',[]))
  assert events,'No OpenData events in existing file'
  producer=Producer({'bootstrap.servers':'kafka:19092'})
@@ -76,7 +76,7 @@ def publish_sources():
  return 'CSV, JSON, XLSX, PostgreSQL, access/application logs, OpenData -> Kafka'
 
 def kafka_roundtrip():
- row=dict(next(csv.DictReader(Path('/opt/spark/data/input/sales.csv').open())))
+ row=dict(next(csv.DictReader(Path('/opt/spark/donnees/input/sales.csv').open())))
  for key in ['sale_id','customer_id','product_id','quantity']: row[key]=int(row[key])
  for key in ['unit_price','discount','amount']: row[key]=float(row[key])
  row['integration_run']=RUN
@@ -102,14 +102,14 @@ def s3():
  return boto3.client('s3',endpoint_url='http://objectstore:9000',aws_access_key_id=os.environ['AWS_ACCESS_KEY_ID'],aws_secret_access_key=os.environ['AWS_SECRET_ACCESS_KEY'],region_name=os.environ['AWS_REGION'],config=Config(s3={'addressing_style':'path'}))
 
 def s3_roundtrip():
- client=s3();body=Path('/opt/spark/data/input/sales.csv').read_bytes();key='integration/'+RUN+'/sales.csv'
+ client=s3();body=Path('/opt/spark/donnees/input/sales.csv').read_bytes();key='integration/'+RUN+'/sales.csv'
  try:
   client.put_object(Bucket='lakehouse',Key=key,Body=body)
   assert client.get_object(Bucket='lakehouse',Key=key)['Body'].read()==body
  finally:client.delete_object(Bucket='lakehouse',Key=key)
  return 'sales.csv exact byte comparison'
 
-SALES=list(csv.DictReader(Path('/opt/spark/data/input/sales.csv').open()))
+SALES=list(csv.DictReader(Path('/opt/spark/donnees/input/sales.csv').open()))
 EXPECTED=len(SALES)
 AMOUNT=sum(Decimal(r['amount']) for r in SALES)
 def verify_trino():
@@ -124,7 +124,7 @@ def verify_trino():
 
 def druid_sql(sql):return request('POST','http://druid-router:8888/druid/v2/sql',json={'query':sql,'context':{'useApproximateCountDistinct':False}}).json()
 def verify_druid():
- client=s3();key='input/sales.csv';client.upload_file('/opt/spark/data/input/sales.csv','druid',key)
+ client=s3();key='input/sales.csv';client.upload_file('/opt/spark/donnees/input/sales.csv','druid',key)
  dims=['sale_id','customer_id','country','product_id','product_name','category']
  schema={'dataSource':'training_sales','timestampSpec':{'column':'event_ts','format':'auto'},'dimensionsSpec':{'dimensions':dims},'metricsSpec':[{'type':'doubleSum','name':'amount','fieldName':'amount'}],'granularitySpec':{'type':'uniform','segmentGranularity':'DAY','queryGranularity':'NONE','rollup':False}}
  body={'type':'index_parallel','id':'integration-batch-'+RUN,'spec':{'dataSchema':schema,'ioConfig':{'type':'index_parallel','inputSource':{'type':'s3','uris':['s3://druid/input/sales.csv']},'inputFormat':{'type':'csv','findColumnsFromHeader':True},'appendToExisting':False},'tuningConfig':{'type':'index_parallel','maxNumConcurrentSubTasks':1}}}
