@@ -23,7 +23,7 @@ jobs:
       - name: Validate Docker Compose configuration
         run: python checks/run_logged.py --name compose-config -- docker compose --env-file .env --env-file ports.env --profile full --profile checks config --quiet
       - name: Verify committed checksums
-        run: python checks/run_logged.py --name checksums -- sha256sum --quiet --check CHECKSUMS_SHA256.txt
+        run: python checks/run_logged.py --name checksums -- sha256sum README.md images/architecture.png && python checks/run_logged.py --name checksums-verify -- sha256sum --quiet --check CHECKSUMS_SHA256.txt
       - name: Upload check logs
         if: always()
         uses: actions/upload-artifact@v4
