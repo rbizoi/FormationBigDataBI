@@ -6,7 +6,7 @@ import uuid
 from pathlib import Path
 from pyspark.sql import SparkSession
 
-for name in ('data', 'jobs'):
+for name in ('donnees', 'jobs'):
     root = Path('/home/spark') / name
     assert root.is_dir() and root.samefile(Path('/opt/spark') / name), root
     for path in root.rglob('*'):
@@ -34,7 +34,7 @@ try:
         from pathlib import Path
         import os
         import uuid
-        for name in ('data', 'jobs'):
+        for name in ('donnees', 'jobs'):
             root = Path('/home/spark') / name
             assert root.samefile(Path('/opt/spark') / name)
             for p in root.rglob('*'):
