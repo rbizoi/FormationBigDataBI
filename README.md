@@ -22,20 +22,20 @@ Toutes les commandes suivantes s'exécutent à la racine du dépôt. **Toujours 
 
 ```bash
 # Vérifier la configuration résolue
-docker compose --env-file .env --env-file ports.env --profile full --profile checks config --quiet
+python checks/run_logged.py --name compose-config -- docker compose --env-file .env --env-file ports.env --profile full --profile checks config --quiet
 
 # Télécharger les images et construire les images locales, outils de test compris
-docker compose --env-file .env --env-file ports.env --profile full --profile seed --profile logs --profile checks pull --ignore-buildable
-docker compose --env-file .env --env-file ports.env --profile full --profile seed --profile logs --profile checks build
+python checks/run_logged.py --name image-pull -- docker compose --env-file .env --env-file ports.env --profile full --profile seed --profile logs --profile checks pull --ignore-buildable
+python checks/run_logged.py --name image-build -- docker compose --env-file .env --env-file ports.env --profile full --profile seed --profile logs --profile checks build
 
 # Vérifier les ports sur le moteur Docker réel
-docker compose --env-file .env --env-file ports.env run --rm ports-check
+python checks/run_logged.py --name ports-check -- docker compose --env-file .env --env-file ports.env run --rm ports-check
 
 # Démarrer tous les composants et attendre leur disponibilité
-docker compose --env-file .env --env-file ports.env --profile full up -d --remove-orphans --wait --wait-timeout 900
+python checks/run_logged.py --name stack-start -- docker compose --env-file .env --env-file ports.env --profile full up -d --remove-orphans --wait --wait-timeout 900
 
 # Contrôler les services, y compris les initialisations terminées
-docker compose --env-file .env --env-file ports.env --profile full ps -a
+python checks/run_logged.py --name services-status -- docker compose --env-file .env --env-file ports.env --profile full ps -a
 ```
 
 Le contrôle des ports est aussi une dépendance automatique des services qui publient un port. Il détecte les collisions internes et les ports occupés par d'autres conteneurs ou processus. Si un port est occupé, modifier la variable correspondante dans `ports.env`, puis relancer. Les ports internes entre services ne doivent pas être changés pour résoudre une collision sur l'hôte.
