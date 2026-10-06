@@ -90,7 +90,7 @@ services:
       PGPORT: '5432'
       PGDATABASE: ${POSTGRES_DB:-formation}
       PGUSER: ${POSTGRES_USER:-formation}
-      PGPASSWORD: ${POSTGRES_PASSWORD:-formation}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
     volumes:
     - ./postgres/init:/sql:ro
     entrypoint:
@@ -194,7 +194,7 @@ services:
       RUSTFS_ADDRESS: :9000
       RUSTFS_CONSOLE_ADDRESS: :9001
       RUSTFS_CONSOLE_ENABLE: 'true'
-      RUSTFS_ACCESS_KEY: ${S3_ACCESS_KEY:-labadmin}
+      RUSTFS_ACCESS_KEY: ${S3_ACCESS_KEY}
       RUSTFS_SECRET_KEY: ${S3_SECRET_KEY:-TRAINING_ONLY_S3_PASSWORD}
       RUSTFS_REGION: ${AWS_REGION:-us-east-1}
       RUSTFS_UNSAFE_BYPASS_DISK_CHECK: 'true'
@@ -260,7 +260,7 @@ services:
         condition: service_completed_successfully
     environment:
       AWS_ACCESS_KEY_ID: ${S3_ACCESS_KEY:-labadmin}
-      AWS_SECRET_ACCESS_KEY: ${S3_SECRET_KEY:-TRAINING_ONLY_S3_PASSWORD}
+      AWS_SECRET_ACCESS_KEY: ${S3_SECRET_KEY}
       AWS_REGION: ${AWS_REGION:-us-east-1}
       AWS_DEFAULT_REGION: ${AWS_REGION:-us-east-1}
       CATALOG_WAREHOUSE: s3://warehouse/
@@ -523,7 +523,7 @@ services:
       PYSPARK_DRIVER_PYTHON: python3
       PYSPARK_SUBMIT_ARGS: --master spark://spark-master:7077 --conf spark.driver.host=spark-jupyter --conf spark.driver.bindAddress=0.0.0.0
         --conf spark.ui.enabled=true --conf spark.ui.port=4040 pyspark-shell
-      JUPYTER_TOKEN: ${JUPYTER_TOKEN:-CHANGE_ME}
+      JUPYTER_TOKEN: ${JUPYTER_TOKEN}
       SPARK_LOG_DIR: /tmp/spark-logs
       SPARK_PID_DIR: /tmp/spark-pids
       SPARK_DAEMON_MEMORY: 512m
@@ -593,7 +593,7 @@ services:
       S3_SECRET_KEY: ${S3_SECRET_KEY:-TRAINING_ONLY_S3_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB:-formation}
       POSTGRES_USER: ${POSTGRES_USER:-formation}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-formation}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
     - 127.0.0.1:${TRINO_PORT:-25012}:8080
     volumes:
@@ -698,7 +698,7 @@ services:
       PGPORT: '5432'
       PGDATABASE: ${POSTGRES_DB:-formation}
       PGUSER: ${POSTGRES_USER:-formation}
-      PGPASSWORD: ${POSTGRES_PASSWORD:-formation}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
     networks:
     - training-net
   web-log-producer:
@@ -822,7 +822,7 @@ services:
     restart: unless-stopped
     environment:
       PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@formation.fr}
-      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-formation}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD}
       PGADMIN_CONFIG_SERVER_MODE: 'True'
       PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: 'False'
       PGADMIN_SERVER_JSON_FILE: /config/servers.json
@@ -865,7 +865,7 @@ services:
     environment:
       POSTGRES_DB: druid
       POSTGRES_USER: druid
-      POSTGRES_PASSWORD: ${DRUID_DB_PASSWORD:-druid}
+      POSTGRES_PASSWORD: ${DRUID_DB_PASSWORD}
     volumes:
     - druid-db-data:/var/lib/postgresql/data
     healthcheck:
@@ -903,7 +903,7 @@ services:
       druid_metadata_storage_type: postgresql
       druid_metadata_storage_connector_connectURI: jdbc:postgresql://druid-db:5432/druid
       druid_metadata_storage_connector_user: druid
-      druid_metadata_storage_connector_password: ${DRUID_DB_PASSWORD:-druid}
+      druid_metadata_storage_connector_password: ${DRUID_DB_PASSWORD}
       druid_storage_type: s3
       druid_storage_bucket: druid
       druid_storage_baseKey: segments
@@ -1217,7 +1217,7 @@ services:
       SUPERSET_SECRET_KEY: ${SUPERSET_SECRET_KEY:-INSECURE_TRAINING_ONLY_CHANGE_ME_SUPERSET_SECRET}
       SUPERSET_DB_PASSWORD: ${SUPERSET_DB_PASSWORD:-superset}
       SUPERSET_ADMIN_USER: ${SUPERSET_ADMIN_USER:-admin}
-      SUPERSET_ADMIN_PASSWORD: ${SUPERSET_ADMIN_PASSWORD:-formation}
+      SUPERSET_ADMIN_PASSWORD: ${SUPERSET_ADMIN_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB:-formation}
       POSTGRES_USER: ${POSTGRES_USER:-formation}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-formation}
