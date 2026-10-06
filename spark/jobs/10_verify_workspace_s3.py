@@ -1,5 +1,4 @@
 """Verify source permissions and distributed S3A reads using the existing dataset."""
-import hashlib
 import json
 import os
 import uuid
@@ -22,11 +21,9 @@ for name in ('donnees', 'jobs'):
 
 spark = SparkSession.builder.appName('WorkspaceAndS3Verification').getOrCreate()
 try:
-    # binaryFile executes S3 reads on Spark executors, rather than a boto3 driver.
-    rows = spark.read.format('binaryFile').option('recursiveFileLookup', 'true').option('pathGlobFilter', '*').load('s3a://lakehouse/donnees/').selectExpr('path', 'sha2(content, 256) AS digest').collect()
-    actual = {row.path.split('/lakehouse/', 1)[1]: row.digest for row in rows}
-    local = {'donnees/' + p.relative_to('/home/spark/donnees').as_posix(): hashlib.sha256(p.read_bytes()).hexdigest() for p in Path('/home/spark/donnees').rglob('*') if p.is_file()}
-    assert actual == local, (set(local) - set(actual), set(actual) - set(local))
+    # objectstore-init already verifies each uploaded file against its SHA-256 manifest.
+    # Read through the normal CSV datasource so executors stream small records
+    # instead of loading every source file as one large binary value.
     sales = spark.read.option('header', True).csv('s3a://lakehouse/donnees/input/sales.csv')
     assert sales.count() == 2000
     assert sales.select('sale_id').distinct().count() == 2000
@@ -46,6 +43,6 @@ try:
         yield os.getuid()
     uids = spark.sparkContext.parallelize(range(4), 4).mapPartitions(worker_access).collect()
     assert all(uid != 0 for uid in uids), uids
-    print('WORKSPACE_S3_OK files=' + str(len(local)) + ' sales=2000 executor_uids=' + json.dumps(uids))
+    print('WORKSPACE_S3_OK sales=2000 executor_uids=' + json.dumps(uids))
 finally:
     spark.stop()
