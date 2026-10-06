@@ -13,7 +13,7 @@ try:
  result['checks'].append('DAG imports OK')
  with Path('/reports/airflow-spark.log').open('w') as log:
   for job in ['10_verify_workspace_s3.py','00_runtime_smoke.py','09_verify_existing_data.py']:
-   subprocess.run(['spark-submit','--driver-memory','512m','--conf','spark.driver.host=airflow-check','--conf','spark.driver.bindAddress=0.0.0.0','/opt/spark/jobs/'+job],env=dict(os.environ, WORKSPACE_EXPECT_WRITE="0"),check=True,stdout=log,stderr=subprocess.STDOUT,timeout=900)
+   subprocess.run(['spark-submit','--driver-memory','512m','--executor-memory','512m','--total-executor-cores','1','--conf','spark.driver.host=airflow-check','--conf','spark.driver.bindAddress=0.0.0.0','/opt/spark/jobs/'+job],env=dict(os.environ, WORKSPACE_EXPECT_WRITE="0"),check=True,stdout=log,stderr=subprocess.STDOUT,timeout=900)
  result['checks'].append('Airflow image -> Spark workers -> existing Kafka/S3/Delta/Iceberg data OK')
  result['status']='PASS'
 except Exception as exc:
