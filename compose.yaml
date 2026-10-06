@@ -1,6 +1,19 @@
 name: bigdata-training
 services:
+  reports-init:
+    image: alpine:3.22.5
+    restart: 'no'
+    user: 0:0
+    command:
+    - /bin/sh
+    - -ec
+    - mkdir -p /reports && (chmod 0777 /reports 2>/dev/null || true)
+    volumes:
+    - ./reports:/reports
   ports-check:
+    depends_on:
+      reports-init:
+        condition: service_completed_successfully
     image: bigdata-training/ports-check:local
     build:
       context: ./docker/ports-check
@@ -30,10 +43,13 @@ services:
     volumes:
     - .:/project:ro
     - /var/run/docker.sock:/var/run/docker.sock
-    - check-reports:/reports
+    - ./reports:/reports
     networks:
     - training-net
   workspace-init:
+    depends_on:
+      reports-init:
+        condition: service_completed_successfully
     image: bigdata-training/spark-runtime:local
     build:
       context: .
@@ -49,7 +65,7 @@ services:
     - ./spark/jobs:/seed/jobs:ro
     - spark-data:/opt/spark/donnees
     - spark-jobs:/opt/spark/jobs
-    - check-reports:/reports
+    - ./reports:/reports
     networks:
     - training-net
   postgres-source:
@@ -1290,6 +1306,13 @@ services:
     hostname: integration-check
     entrypoint:
     - python3
+    - /checks/run_logged.py
+    - --name
+    - integration-check
+    - --log-dir
+    - /reports
+    - --
+    - python3
     - /checks/integration.py
     environment:
       AWS_ACCESS_KEY_ID: ${S3_ACCESS_KEY:-labadmin}
@@ -1313,7 +1336,7 @@ services:
     - spark-jobs:/opt/spark/jobs
     - spark-data:/opt/spark/donnees
     - ./checks:/checks:ro
-    - check-reports:/reports
+    - ./reports:/reports
     - ./docker:/producers:ro
     networks:
     - training-net
@@ -1329,6 +1352,13 @@ services:
     - checks
     hostname: airflow-check
     entrypoint:
+    - python3
+    - /checks/run_logged.py
+    - --name
+    - airflow-check
+    - --log-dir
+    - /reports
+    - --
     - python3
     - /checks/airflow_check.py
     environment:
@@ -1354,7 +1384,7 @@ services:
     - spark-data:/opt/spark/donnees:ro
     - ./checks:/checks:ro
     - ./airflow/dags:/opt/airflow/dags:ro
-    - check-reports:/reports
+    - ./reports:/reports
     networks:
     - training-net
     user: airflow
@@ -1396,7 +1426,7 @@ services:
     - 127.0.0.1:${DASHBOARD_PORT:-25021}:8090
     volumes:
     - ./dashboard:/app:ro
-    - check-reports:/reports:ro
+    - ./reports:/reports:ro
     networks:
     - training-net
   pgadmin-config:
@@ -1414,6 +1444,9 @@ services:
     networks:
     - training-net
   static-check:
+    depends_on:
+      reports-init:
+        condition: service_completed_successfully
     image: bigdata-training/bootstrap:local
     build:
       context: ./docker/bootstrap
@@ -1421,16 +1454,23 @@ services:
     - checks
     entrypoint:
     - python
+    - /project/checks/run_logged.py
+    - --name
+    - static-check
+    - --log-dir
+    - /reports
+    - --
+    - python
     - /project/tools/static_validate.py
     volumes:
     - .:/project:ro
+    - ./reports:/reports
 networks:
   training-net:
     driver: bridge
 volumes:
   spark-data: null
   spark-jobs: null
-  check-reports: null
   postgres-source-data: null
   kafka-data: null
   objectstore-data: null

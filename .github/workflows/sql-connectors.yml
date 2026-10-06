@@ -2,7 +2,7 @@ name: SQL connectors
 on:
   push:
     branches: [master]
-    paths: ['compose.yaml', 'trino/**', 'docker/objectstore-init/**', 'checks/sql_connectors.py', '.github/workflows/sql-connectors.yml']
+    paths: ['compose.yaml', 'trino/**', 'docker/objectstore-init/**', 'checks/sql_connectors.py', 'checks/run_logged.py', '.github/workflows/sql-connectors.yml']
   pull_request:
   workflow_dispatch:
 permissions:
@@ -16,9 +16,21 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - run: docker compose --env-file .env --env-file ports.env up -d --build --wait --wait-timeout 600 trino
-      - run: python checks/sql_connectors.py
-      - if: always()
-        run: docker compose --env-file .env --env-file ports.env logs --tail=100 trino iceberg-rest objectstore postgres-source
-      - if: always()
-        run: docker compose --env-file .env --env-file ports.env --profile '*' down --volumes --remove-orphans
+      - name: Start Trino and its SQL dependencies
+        run: python checks/run_logged.py --name sql-compose-up -- docker compose --env-file .env --env-file ports.env up -d --build --wait --wait-timeout 600 trino
+      - name: Test PostgreSQL and Iceberg federation
+        run: python checks/run_logged.py --name sql-connectors -- python checks/sql_connectors.py
+      - name: Collect SQL service container logs
+        if: always()
+        run: python checks/run_logged.py --name sql-container-logs -- docker compose --env-file .env --env-file ports.env logs --tail=100 trino iceberg-rest objectstore postgres-source
+      - name: Clean up SQL test stack
+        if: always()
+        run: python checks/run_logged.py --name sql-cleanup -- docker compose --env-file .env --env-file ports.env --profile '*' down --volumes --remove-orphans
+      - name: Upload check logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sql-connector-reports-${{ github.run_id }}
+          path: reports/
+          if-no-files-found: warn
+          retention-days: 14

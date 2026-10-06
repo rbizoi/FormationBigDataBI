@@ -2,7 +2,7 @@ name: Kafka partition readiness
 on:
   push:
     branches: [master]
-    paths: ['docker/bootstrap/**', 'docker/file-producer/**', 'checks/integration.py', 'tests/test_kafka_ready.py', '.github/workflows/kafka.yml']
+    paths: ['docker/bootstrap/**', 'docker/file-producer/**', 'checks/integration.py', 'checks/run_logged.py', 'tests/test_kafka_ready.py', '.github/workflows/kafka.yml']
   pull_request:
   workflow_dispatch:
 permissions:
@@ -16,13 +16,29 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - run: pip install pytest
-      - run: python -m pytest -q tests/test_kafka_ready.py
-      - run: docker compose --env-file .env --env-file ports.env --profile full build kafka-init file-producer
-      - run: docker compose --env-file .env --env-file ports.env --profile full run --rm kafka-init
-      - run: docker compose --env-file .env --env-file ports.env --profile full run --rm kafka-init
-      - run: docker compose --env-file .env --env-file ports.env --profile full run --rm file-producer
-      - if: always()
-        run: docker compose --env-file .env --env-file ports.env --profile full logs --tail=100 kafka
-      - if: always()
-        run: docker compose --env-file .env --env-file ports.env --profile full down -v
+      - name: Install test dependencies
+        run: python checks/run_logged.py --name install-pytest -- pip install pytest
+      - name: Run Kafka readiness unit tests
+        run: python checks/run_logged.py --name kafka-unit-tests -- python -m pytest -q tests/test_kafka_ready.py
+      - name: Build Kafka producer images
+        run: python checks/run_logged.py --name kafka-build -- docker compose --env-file .env --env-file ports.env --profile full build kafka-init file-producer
+      - name: Initialize Kafka topics
+        run: python checks/run_logged.py --name kafka-init-first -- docker compose --env-file .env --env-file ports.env --profile full run --rm kafka-init
+      - name: Verify Kafka topic initialization is idempotent
+        run: python checks/run_logged.py --name kafka-init-repeat -- docker compose --env-file .env --env-file ports.env --profile full run --rm kafka-init
+      - name: Run file producer
+        run: python checks/run_logged.py --name file-producer -- docker compose --env-file .env --env-file ports.env --profile full run --rm file-producer
+      - name: Collect Kafka container logs
+        if: always()
+        run: python checks/run_logged.py --name kafka-container-logs -- docker compose --env-file .env --env-file ports.env --profile full logs --tail=100 kafka
+      - name: Clean up Kafka test stack
+        if: always()
+        run: python checks/run_logged.py --name kafka-cleanup -- docker compose --env-file .env --env-file ports.env --profile full down -v
+      - name: Upload check logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: kafka-check-reports-${{ github.run_id }}
+          path: reports/
+          if-no-files-found: warn
+          retention-days: 14

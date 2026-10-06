@@ -14,9 +14,21 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - run: pip install pytest PyYAML boto3
-      - run: python tools/static_validate.py
-      - run: python -m pytest -q tests
-      - run: docker compose --env-file .env --env-file ports.env --profile full --profile checks config --quiet
+      - name: Install contract test dependencies
+        run: python checks/run_logged.py --name install-contract-dependencies -- pip install pytest PyYAML boto3
+      - name: Validate static repository contracts
+        run: python checks/run_logged.py --name static-contracts -- python tools/static_validate.py
+      - name: Run unit tests
+        run: python checks/run_logged.py --name unit-tests -- python -m pytest -q tests
+      - name: Validate Docker Compose configuration
+        run: python checks/run_logged.py --name compose-config -- docker compose --env-file .env --env-file ports.env --profile full --profile checks config --quiet
       - name: Verify committed checksums
-        run: sha256sum --quiet --check CHECKSUMS_SHA256.txt
+        run: python checks/run_logged.py --name checksums -- sha256sum --quiet --check CHECKSUMS_SHA256.txt
+      - name: Upload check logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: repository-contracts-reports-${{ github.run_id }}
+          path: reports/
+          if-no-files-found: warn
+          retention-days: 14

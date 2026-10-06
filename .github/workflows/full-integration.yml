@@ -20,23 +20,33 @@ jobs:
       COMPOSE_PROJECT_NAME: formation-ci-${{ github.run_id }}
     steps:
       - uses: actions/checkout@v4
-      - run: docker compose --env-file .env --env-file ports.env --profile full --profile checks config --quiet
-      - run: docker compose --env-file .env --env-file ports.env --profile full --profile checks build
-      - run: docker compose --env-file .env --env-file ports.env --profile full up -d --wait --wait-timeout 900
-      - run: docker compose --env-file .env --env-file ports.env --profile checks run --rm static-check
-      - run: docker compose --env-file .env --env-file ports.env --profile checks run --rm integration-check --full
-      - if: ${{ !cancelled() }}
-        run: docker compose --env-file .env --env-file ports.env --profile checks run --rm airflow-check
-      - if: always()
-        run: |
-          mkdir -p runtime-reports
-          docker compose --env-file .env --env-file ports.env --profile full ps -a > runtime-reports/containers.txt
-          docker compose --env-file .env --env-file ports.env --profile full logs --no-color > runtime-reports/compose.log
-          docker run --rm -v "${COMPOSE_PROJECT_NAME}_check-reports:/reports:ro" -v "$PWD/runtime-reports:/output" alpine:3.22.5 sh -c 'cp -r /reports/. /output/'
-      - uses: actions/upload-artifact@v4
+      - name: Validate Compose configuration
+        run: python checks/run_logged.py --name full-compose-config -- docker compose --env-file .env --env-file ports.env --profile full --profile checks config --quiet
+      - name: Build all training services
+        run: python checks/run_logged.py --name full-compose-build -- docker compose --env-file .env --env-file ports.env --profile full --profile checks build
+      - name: Start the full stack
+        run: python checks/run_logged.py --name full-compose-up -- docker compose --env-file .env --env-file ports.env --profile full up -d --wait --wait-timeout 900
+      - name: Run static checks
+        run: python checks/run_logged.py --name static-check -- docker compose --env-file .env --env-file ports.env --profile checks run --rm static-check
+      - name: Run full integration checks
+        run: python checks/run_logged.py --name integration-check -- docker compose --env-file .env --env-file ports.env --profile checks run --rm integration-check --full
+      - name: Run Airflow to Spark check
+        if: ${{ !cancelled() }}
+        run: python checks/run_logged.py --name airflow-check -- docker compose --env-file .env --env-file ports.env --profile checks run --rm airflow-check
+      - name: Capture container status
         if: always()
+        run: python checks/run_logged.py --name compose-status -- docker compose --env-file .env --env-file ports.env --profile full ps -a
+      - name: Capture all Compose service logs
+        if: always()
+        run: python checks/run_logged.py --name compose-service-logs -- docker compose --env-file .env --env-file ports.env --profile full logs --no-color
+      - name: Clean up full integration stack
+        if: always()
+        run: python checks/run_logged.py --name full-compose-cleanup -- docker compose --env-file .env --env-file ports.env --profile '*' down --volumes --remove-orphans
+      - name: Upload check logs and reports
+        if: always()
+        uses: actions/upload-artifact@v4
         with:
-          name: full-integration-reports
-          path: runtime-reports
-      - if: always()
-        run: docker compose --env-file .env --env-file ports.env --profile '*' down --volumes --remove-orphans
+          name: full-integration-reports-${{ github.run_id }}
+          path: reports/
+          if-no-files-found: warn
+          retention-days: 30

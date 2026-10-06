@@ -102,16 +102,19 @@ Après le démarrage complet :
 
 ```bash
 # Contrats statiques : chemins, dépendances, données et syntaxe
-docker compose --env-file .env --env-file ports.env --profile checks run --rm static-check
+python checks/run_logged.py --name static-check -- docker compose --env-file .env --env-file ports.env --profile checks run --rm static-check
 
 # Flux de tous les composants de formation
-docker compose --env-file .env --env-file ports.env --profile checks run --rm integration-check --full
+python checks/run_logged.py --name integration-check -- docker compose --env-file .env --env-file ports.env --profile checks run --rm integration-check --full
 
 # Chargement des DAGs et pilote Airflow vers les workers Spark
-docker compose --env-file .env --env-file ports.env --profile checks run --rm airflow-check
+python checks/run_logged.py --name airflow-check -- docker compose --env-file .env --env-file ports.env --profile checks run --rm airflow-check
+
+# Tests unitaires Python
+python checks/run_logged.py --name unit-tests -- python -m pytest -q tests
 ```
 
-Les trois commandes doivent retourner **0**. Le contrôle complet exige les interfaces du cœur et du profil full. Si une interface ne répond pas, il écrit un rapport FAIL avant de lancer les pipelines. Il vérifie ensuite :
+Ces contrôles doivent retourner **0**. Le contrôle complet exige les interfaces du cœur et du profil full. Si une interface ne répond pas, il écrit un rapport FAIL avant de lancer les pipelines. Il vérifie ensuite :
 
 - Les producteurs fichiers, SQL et logs vers Kafka, puis un aller-retour producteur/consommateur.
 - La copie SHA-256 de `donnees` vers S3, les accès de Spark, et la lecture/écriture exacte d'un fichier S3.
@@ -123,9 +126,9 @@ Les trois commandes doivent retourner **0**. Le contrôle complet exige les inte
 
 Le contrôle Airflow importe les DAGs et lance des jobs avec le pilote de son image vers les workers. Il ne simule pas une exécution complète déclenchée par le scheduler. Les contrôles HTTP des interfaces ne simulent pas une session graphique.
 
-Les rapports `integration.json`, `airflow-check.json`, `ports-check.json` et les logs Spark sont conservés dans le volume `check-reports` et consultables dans le portail. Les tests réutilisent les données existantes, remplacent certaines sorties pédagogiques et laissent des tables et un supervisor Druid.
+Tous les fichiers générés par les contrôles et tests Docker sont écrits dans le répertoire hôte `reports/` (fichiers JSON et logs Spark). Le dossier est partagé en écriture par les services Docker concernés ; ses fichiers générés sont ignorés par Git, seul `.gitkeep` reste suivi. Les tests réutilisent les données existantes, remplacent certaines sorties pédagogiques et laissent des tables et un supervisor Druid.
 
-Pour le cœur seulement, démarrer sans `--profile full` et exécuter `integration-check` sans `--full`. Le contrôle Airflow nécessite son profil. Les tests unitaires de maintenance s'exécutent avec `python -m pytest -q tests` après installation de `pytest`, `PyYAML` et `boto3`.
+Pour le cœur seulement, démarrer sans `--profile full` et exécuter `integration-check` sans `--full`. Le contrôle Airflow nécessite son profil. Les logs des workflows GitHub sont aussi téléchargeables comme artefacts `*-reports` pendant 14 jours (30 jours pour l'intégration complète).
 
 ### Exécuter les producteurs ponctuels séparément
 

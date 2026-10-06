@@ -2,7 +2,7 @@ name: Published ports contracts
 on:
   push:
     branches: [master]
-    paths: ['compose.yaml', 'ports.env', 'docker/ports-check/**', 'tests/test_ports.py', '.github/workflows/ports.yml']
+    paths: ['compose.yaml', 'ports.env', 'docker/ports-check/**', 'checks/run_logged.py', 'tests/test_ports.py', '.github/workflows/ports.yml']
   pull_request:
   workflow_dispatch:
 permissions:
@@ -16,22 +16,39 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - run: python -m pip install pytest PyYAML
-      - run: python -m pytest -q tests/test_ports.py
-      - run: docker compose --env-file .env --env-file ports.env --profile full config --quiet
-      - name: Probe all 19 ports on the real Docker engine
-        run: docker compose --env-file .env --env-file ports.env run --build --no-deps --rm ports-check
+      - name: Install port contract dependencies
+        run: python checks/run_logged.py --name install-port-dependencies -- python -m pip install pytest PyYAML
+      - name: Run port contract unit tests
+        run: python checks/run_logged.py --name port-unit-tests -- python -m pytest -q tests/test_ports.py
+      - name: Validate resolved Compose ports
+        run: python checks/run_logged.py --name port-compose-config -- docker compose --env-file .env --env-file ports.env --profile full config --quiet
+      - name: Probe all 19 host ports on the Docker engine
+        run: python checks/run_logged.py --name port-live-probes -- docker compose --env-file .env --env-file ports.env run --build --no-deps --rm ports-check
       - name: Detect a conflicting foreign container
         run: |
-          docker run -d --name ports-ci-conflict -p 127.0.0.1:25021:8090 alpine:3.22.5 sleep 300
-          python -c "import subprocess; p=subprocess.run(['docker','compose','--env-file','.env','--env-file','ports.env','run','--no-deps','--rm','ports-check','--services','dashboard']); assert p.returncode == 1"
-          docker rm -f ports-ci-conflict
+          python checks/run_logged.py --name conflicting-container -- bash -euo pipefail -c '
+            docker run -d --name ports-ci-conflict -p 127.0.0.1:25021:8090 alpine:3.22.5 sleep 300
+            python -c "import subprocess; p=subprocess.run([\"docker\",\"compose\",\"--env-file\",\".env\",\"--env-file\",\"ports.env\",\"run\",\"--no-deps\",\"--rm\",\"ports-check\",\"--services\",\"dashboard\"]); assert p.returncode == 1"
+            docker rm -f ports-ci-conflict
+          '
       - name: Accept the matching existing project service
         run: |
-          docker compose --env-file .env --env-file ports.env up -d dashboard
-          docker compose --env-file .env --env-file ports.env run --no-deps --rm ports-check --services dashboard
-      - name: Cleanup
+          python checks/run_logged.py --name matching-project-service -- bash -euo pipefail -c '
+            docker compose --env-file .env --env-file ports.env up -d dashboard
+            docker compose --env-file .env --env-file ports.env run --no-deps --rm ports-check --services dashboard
+          '
+      - name: Clean up port contract stack
         if: always()
         run: |
-          docker rm -f ports-ci-conflict || true
-          docker compose --env-file .env --env-file ports.env --profile '*' down --volumes --remove-orphans
+          python checks/run_logged.py --name ports-cleanup -- bash -euo pipefail -c '
+            docker rm -f ports-ci-conflict || true
+            docker compose --env-file .env --env-file ports.env --profile "*" down --volumes --remove-orphans
+          '
+      - name: Upload check logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ports-contract-reports-${{ github.run_id }}
+          path: reports/
+          if-no-files-found: warn
+          retention-days: 14
