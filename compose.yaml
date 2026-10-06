@@ -1342,7 +1342,7 @@ services:
       AWS_REGION: ${AWS_REGION:-us-east-1}
       AWS_DEFAULT_REGION: ${AWS_REGION:-us-east-1}
       SPARK_CONF_DIR: /opt/spark/conf
-      SPARK_LOCAL_IP: airflow
+      SPARK_LOCAL_IP: airflow-check
       PYSPARK_PYTHON: python3
       PYSPARK_DRIVER_PYTHON: python3
       POSTGRES_DB: ${POSTGRES_DB:-formation}

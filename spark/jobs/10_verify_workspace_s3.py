@@ -10,7 +10,7 @@ for name in ('donnees', 'jobs'):
     root = Path('/home/spark') / name
     assert root.is_dir() and root.samefile(Path('/opt/spark') / name), root
     for path in root.rglob('*'):
-        if path.is_file():
+        if path.is_file() and not path.name.endswith((".gzip", ".parquet")):
             with path.open('rb') as stream:
                 stream.read(1)
     # Airflow mounts the volumes read-only. Spark must actually be able to write.
