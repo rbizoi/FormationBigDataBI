@@ -16,6 +16,7 @@ from pyspark.sql.types import LongType
 ROOT = "s3a://lakehouse"
 BRONZE = f"{ROOT}/bronze/ebrasil"
 SILVER = f"{ROOT}/silver/ebrasil"
+PAYMENTS_CSV = f"{ROOT}/donnees/ebrasil/olist_order_payments_dataset.csv"
 INPUTS = ("customers", "geolocation", "items", "orders", "payments",
           "products", "reviews", "sellers")
 DRUID_METRICS = {
@@ -285,34 +286,45 @@ def main():
                                     "time_key", f"{role}_time")
     persist("fact_order", order_star, manifest)
 
-    # The prepared payments.parquet is pivoted by order in this repository, so
-    # the finest possible grain is order x payment method, not payment sequence.
-    if has(payments, "type") and has(payments, "payment_sequential"):
-        pay_detail = payments.select("order_id",
-            F.col("type").alias("payment_type"), F.col("value").cast("double").alias("payment_value"),
-            F.col("payment_installments").cast("long").alias("installments"))
-    else:
-        value_columns = [c for c in payments.columns if c.startswith("value_")]
-        if value_columns:
-            payment_rows = []
-            for value_column in value_columns:
-                payment_type = value_column[6:]
-                installment_column = f"int_{payment_type}"
-                installment_value = (F.col(installment_column).cast("long")
-                                     if has(payments, installment_column)
-                                     else F.lit(0).cast("long"))
-                payment_rows.append(payments.select("order_id",
-                    F.lit(payment_type).alias("payment_type"),
-                    F.col(value_column).cast("double").alias("payment_value"),
-                    installment_value.alias("installments")))
-            pay_detail = reduce(lambda a, b: a.unionByName(b), payment_rows)
-        else:
-            pay_detail = payments.select("order_id", F.lit("aggregated").alias("payment_type"),
-                F.col("value").cast("double").alias("payment_value"),
-                F.lit(0).cast("long").alias("installments"))
-    pay_detail = pay_detail.where(F.coalesce("payment_value", F.lit(0.0)) != 0)
+    # The prepared payments.parquet is pivoted and has lost the payment sequence.
+    # Read the original CSV copied to RustFS so fact_payment keeps its true grain:
+    # one row per (order_id, payment_sequential). orders is unique by order_id,
+    # therefore its join uses order_id only; payment_sequential remains the
+    # payment fact's second key and must not be used to join to orders.
+    raw_payments = (spark.read.option("header", "true")
+        .option("mode", "FAILFAST").csv(PAYMENTS_CSV))
+    required_payment_columns = {
+        "order_id", "payment_sequential", "payment_type",
+        "payment_installments", "payment_value",
+    }
+    missing_payment_columns = required_payment_columns - set(raw_payments.columns)
+    if missing_payment_columns:
+        raise RuntimeError(
+            f"Unsupported raw payments CSV schema at {PAYMENTS_CSV}; "
+            f"missing columns: {sorted(missing_payment_columns)}"
+        )
+    pay_detail = raw_payments.select(
+        F.trim(F.col("order_id")).alias("order_id"),
+        F.col("payment_sequential").cast("long").alias("payment_sequential"),
+        F.coalesce(F.col("payment_type"), F.lit("not_defined")).alias("payment_type"),
+        F.col("payment_value").cast("double").alias("payment_value"),
+        F.coalesce(F.col("payment_installments").cast("long"), F.lit(0)).alias("installments"),
+    )
+    invalid_payments = pay_detail.where(
+        F.col("order_id").isNull() | (F.col("order_id") == "")
+        | F.col("payment_sequential").isNull() | F.col("payment_value").isNull()
+    ).limit(1).count()
+    if invalid_payments:
+        raise RuntimeError("Raw payments CSV contains a null/invalid payment key or value")
+    duplicate_payment_keys = (pay_detail.groupBy("order_id", "payment_sequential")
+        .count().where(F.col("count") > 1).limit(1).count())
+    if duplicate_payment_keys:
+        raise RuntimeError(
+            "Raw payments CSV contains duplicate (order_id, payment_sequential) keys"
+        )
+
     finance = (pay_detail.join(o, "order_id", "left").join(cust, "customer_id", "left")
-        .select("order_id", "payment_type", "customer_unique_id",
+        .select("order_id", "payment_sequential", "payment_type", "customer_unique_id",
                 key_date(purchase).alias("purchase_date_key"), key_time(purchase).alias("purchase_time_key"),
                 "payment_value", "installments", F.lit(1).cast("long").alias("transaction_count"),
                 hour_timestamp(purchase).alias("event_ts")))
