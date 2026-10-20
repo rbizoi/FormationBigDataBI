@@ -17,6 +17,7 @@ ROOT = "s3a://lakehouse"
 BRONZE = f"{ROOT}/bronze/ebrasil"
 SILVER = f"{ROOT}/silver/ebrasil"
 PAYMENTS_CSV = f"{ROOT}/donnees/ebrasil/olist_order_payments_dataset.csv"
+PAYMENTS_DETAIL = f"{BRONZE}/payments_detail"
 INPUTS = ("customers", "geolocation", "items", "orders", "payments",
           "products", "reviews", "sellers")
 DRUID_METRICS = {
@@ -323,6 +324,9 @@ def main():
             "Raw payments CSV contains duplicate (order_id, payment_sequential) keys"
         )
 
+    pay_detail.write.mode("overwrite").parquet(PAYMENTS_DETAIL)
+    # From here on, fact_payment reads only a Parquet dataset in bronze.
+    pay_detail = spark.read.parquet(PAYMENTS_DETAIL)
     finance = (pay_detail.join(o, "order_id", "left").join(cust, "customer_id", "left")
         .select("order_id", "payment_sequential", "payment_type", "customer_unique_id",
                 key_date(purchase).alias("purchase_date_key"), key_time(purchase).alias("purchase_time_key"),
