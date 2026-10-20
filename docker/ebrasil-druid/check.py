@@ -52,7 +52,7 @@ def source_payment_row_count():
     body = S3.get_object(Bucket=BUCKET,
         Key="donnees/ebrasil/olist_order_payments_dataset.csv")["Body"]
     try:
-        reader = csv.DictReader(io.TextIOWrapper(body, encoding="utf-8"))
+        reader = csv.DictReader(io.StringIO(body.read().decode("utf-8")))
         return sum(1 for _ in reader)
     finally:
         body.close()
