@@ -84,6 +84,15 @@ def check_silver_and_druid():
         raise AssertionError(
             f"fact_payment row count mismatch: {actual_payments} != source CSV {expected_payments}"
         )
+    duplicate_keys = query(
+        'SELECT order_id, payment_sequential, COUNT(*) AS n '
+        'FROM "fact_payment" GROUP BY order_id, payment_sequential '
+        'HAVING COUNT(*) > 1 LIMIT 1'
+    )
+    if duplicate_keys:
+        raise AssertionError(
+            f"fact_payment contains duplicate (order_id, payment_sequential): {duplicate_keys[0]}"
+        )
     print(
         f"EBRASIL_SILVER_DRUID_CHECK_OK tables={len(tables)} "
         f"fact_payment_rows={actual_payments}"
