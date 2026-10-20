@@ -33,7 +33,11 @@ def check_bronze():
         body.close()
         if digest != expected["sha256"]:
             raise AssertionError(f"Bronze SHA-256 mismatch: {filename}")
-    print(f"EBRASIL_BRONZE_CHECK_OK files={len(manifest)}")
+    detail = S3.list_objects_v2(Bucket=BUCKET,
+        Prefix="bronze/ebrasil/payments_detail/").get("Contents", [])
+    if not any(item["Key"].endswith(".parquet") for item in detail):
+        raise AssertionError("Missing detailed payment Parquet dataset in bronze")
+    print(f"EBRASIL_BRONZE_CHECK_OK files={len(manifest)} payment_detail_parquet=present")
 
 def query(sql):
     response = HTTP.post(DRUID + "/druid/v2/sql",
