@@ -73,3 +73,4 @@ def test_fact_payment_preserves_source_sequence_and_composite_key():
     checker = (ROOT / "docker/ebrasil-druid/check.py").read_text(encoding="utf-8")
     assert "payment_sequential" in checker
     assert "olist_order_payments_dataset.csv" in checker
+    assert "GROUP BY order_id, payment_sequential" in checker
