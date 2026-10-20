@@ -63,7 +63,10 @@ def test_ebrasil_processing_and_control_scripts_parse():
 
 def test_fact_payment_preserves_source_sequence_and_composite_key():
     model = (ROOT / "spark/jobs/20_build_ebrasil_warehouse.py").read_text(encoding="utf-8")
+    assert 'PAYMENTS_DETAIL = f"{BRONZE}/payments_detail"' in model
     assert 'PAYMENTS_CSV = f"{ROOT}/donnees/ebrasil/olist_order_payments_dataset.csv"' in model
+    assert 'pay_detail.write.mode("overwrite").parquet(PAYMENTS_DETAIL)' in model
+    assert 'spark.read.parquet(PAYMENTS_DETAIL)' in model
     assert 'F.col("payment_sequential").cast("long").alias("payment_sequential")' in model
     assert 'groupBy("order_id", "payment_sequential")' in model
     assert 'pay_detail.join(o, "order_id", "left")' in model
@@ -73,4 +76,5 @@ def test_fact_payment_preserves_source_sequence_and_composite_key():
     checker = (ROOT / "docker/ebrasil-druid/check.py").read_text(encoding="utf-8")
     assert "payment_sequential" in checker
     assert "olist_order_payments_dataset.csv" in checker
+    assert "payments_detail/" in checker
     assert "GROUP BY order_id, payment_sequential" in checker
