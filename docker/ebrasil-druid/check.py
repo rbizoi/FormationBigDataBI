@@ -1,7 +1,9 @@
 """Verify the eBrasil bronze copy, silver model and Druid datasources."""
 from __future__ import annotations
 
+import csv
 import hashlib
+import io
 import json
 import os
 import sys
@@ -31,7 +33,11 @@ def check_bronze():
         body.close()
         if digest != expected["sha256"]:
             raise AssertionError(f"Bronze SHA-256 mismatch: {filename}")
-    print(f"EBRASIL_BRONZE_CHECK_OK files={len(manifest)}")
+    detail = S3.list_objects_v2(Bucket=BUCKET,
+        Prefix="bronze/ebrasil/payments_detail/").get("Contents", [])
+    if not any(item["Key"].endswith(".parquet") for item in detail):
+        raise AssertionError("Missing detailed payment Parquet dataset in bronze")
+    print(f"EBRASIL_BRONZE_CHECK_OK files={len(manifest)} payment_detail_parquet=present")
 
 def query(sql):
     response = HTTP.post(DRUID + "/druid/v2/sql",
@@ -41,6 +47,16 @@ def query(sql):
             f"Druid SQL HTTP {response.status_code}: {response.text[:2000]}"
         )
     return response.json()
+
+def source_payment_row_count():
+    body = S3.get_object(Bucket=BUCKET,
+        Key="donnees/ebrasil/olist_order_payments_dataset.csv")["Body"]
+    try:
+        reader = csv.DictReader(io.StringIO(body.read().decode("utf-8")))
+        return sum(1 for _ in reader)
+    finally:
+        body.close()
+
 
 def check_silver_and_druid():
     model = json.loads(S3.get_object(Bucket=BUCKET,
@@ -53,6 +69,9 @@ def check_silver_and_druid():
     if set(tables) != expected_tables:
         raise AssertionError(
             f"Expected the six denormalized star tables, found {sorted(tables)}")
+    payment_dimensions = set(tables["fact_payment"]["dimensions"])
+    if "payment_sequential" not in payment_dimensions:
+        raise AssertionError("fact_payment is missing payment_sequential")
     for table, definition in tables.items():
         prefix = f"silver/ebrasil/{table}/"
         objects = S3.list_objects_v2(Bucket=BUCKET, Prefix=prefix).get("Contents", [])
@@ -63,7 +82,25 @@ def check_silver_and_druid():
         if int(rows) != int(definition["rows"]):
             raise AssertionError(
                 f"Druid row count mismatch for {table}: {rows} != {definition['rows']}")
-    print(f"EBRASIL_SILVER_DRUID_CHECK_OK tables={len(tables)}")
+    expected_payments = source_payment_row_count()
+    actual_payments = int(query('SELECT COUNT(*) AS n FROM "fact_payment"')[0]["n"])
+    if actual_payments != expected_payments:
+        raise AssertionError(
+            f"fact_payment row count mismatch: {actual_payments} != source CSV {expected_payments}"
+        )
+    duplicate_keys = query(
+        'SELECT order_id, payment_sequential, COUNT(*) AS n '
+        'FROM "fact_payment" GROUP BY order_id, payment_sequential '
+        'HAVING COUNT(*) > 1 LIMIT 1'
+    )
+    if duplicate_keys:
+        raise AssertionError(
+            f"fact_payment contains duplicate (order_id, payment_sequential): {duplicate_keys[0]}"
+        )
+    print(
+        f"EBRASIL_SILVER_DRUID_CHECK_OK tables={len(tables)} "
+        f"fact_payment_rows={actual_payments}"
+    )
 
 def main():
     check_bronze()
