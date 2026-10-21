@@ -90,11 +90,28 @@ def persist(name, df, manifest):
     # Keep Spark's partitions so large facts do not concentrate in one task.
     df.write.mode("overwrite").json(druid_path)
     metrics = metric_fields(name)
+    # Druid rollup is disabled for these row-grain facts. Keep every input
+    # column (including numeric measures) as a typed dimension so queries can
+    # group or bucket the original payment_value/installments without losing
+    # their per-row values during ingestion.
+    numeric_long = {"long", "integer", "short", "byte"}
+    numeric_double = {"double", "float", "decimal"}
+    dimension_types = {}
+    for field in df.schema.fields:
+        if field.name == "event_ts":
+            continue
+        spark_type = field.dataType.typeName().lower()
+        dimension_types[field.name] = (
+            "long" if spark_type in numeric_long else
+            "double" if spark_type in numeric_double else
+            "string"
+        )
     manifest[name] = {
         "rows": count,
         "parquet_path": f"silver/ebrasil/{name}",
         "druid_path": f"silver/ebrasil/druid/{name}",
-        "dimensions": [c for c in df.columns if c != "event_ts" and c not in metrics],
+        "dimensions": list(dimension_types),
+        "dimension_types": dimension_types,
         "metrics": metrics,
     }
     print(f"EBRASIL_TABLE_OK name={name} rows={count}", flush=True)
