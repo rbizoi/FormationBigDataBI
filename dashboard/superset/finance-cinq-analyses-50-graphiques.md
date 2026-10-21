@@ -13,7 +13,7 @@ Ce plan reprend les cinq axes du document et les dix visuels attendus dans chaqu
 - Échéances moyennes : `AVG(installments)`.
 - Ticket moyen : `AVG(payment_value)` au niveau du grain disponible; pour un ticket de commande, agréger d’abord les paiements par `order_id`, puis calculer la moyenne.
 - Montants de paiement observés : ce sont les montants associés aux moyens de paiement préparés; ils ne représentent pas des frais, remboursements ou encaissements nets.
-- Les dimensions `purchase_date_calendar_date`, `purchase_date_calendar_year`, `purchase_date_calendar_quarter`, `purchase_date_calendar_month`, `purchase_date_calendar_day`, `purchase_date_calendar_weekday`, `purchase_date_time_hour`, `purchase_date_time_day_period`, `customer_state`, `customer_city`, `customer_zip_code`, `customer_unique_id`, `payment_type`, `installments`, `order_id` sont celles indiquées ou utilisées dans les exemples du document.
+- Les dimensions `purchase_date_calendar_date`, `purchase_date_year`, `purchase_date_quarter`, `purchase_date_month`, `purchase_date_day`, `purchase_date_weekday`, `purchase_time_hour`, `purchase_time_day_part`, `customer_state`, `customer_city`, `customer_zip_code`, `customer_unique_id`, `payment_type`, `installments`, `order_id` sont celles indiquées ou utilisées dans les exemples du document.
 - Les heatmaps utilisent la dimension indiquée dans « détail ». Pour faciliter la lecture, limiter les villes, clients et codes postaux aux premières valeurs par montant/volume.
 - Les hiérarchies sont à réaliser avec des niveaux de granularité et des filtres/cross-filters du dashboard. Les chemins qui traversent des grains différents doivent être interprétés comme navigation et comparaison, jamais comme jointure additive implicite.
 
@@ -24,11 +24,11 @@ Hiérarchies : **type > date d’achat**; **type > état/ville client**; calendr
 | # | Visuel | Type | Dimension / détail | Mesure |
 |---|---|---|---|---|
 | 1 | Type paiement | Barres | `payment_type` | Montant payé |
-| 2 | Mois achat | Courbe | `purchase_date_calendar_month` | Commandes distinctes |
-| 3 | Année achat | Courbe | `purchase_date_calendar_year` | Transactions préparées |
-| 4 | Trimestre achat | Barres | `purchase_date_calendar_quarter` | Montant payé |
-| 5 | Jour semaine | Barres | `purchase_date_calendar_weekday` | Commandes distinctes |
-| 6 | Partie du jour | Barres | `purchase_date_time_day_period` | Transactions préparées |
+| 2 | Mois achat | Courbe | `purchase_date_month` | Commandes distinctes |
+| 3 | Année achat | Courbe | `purchase_date_year` | Transactions préparées |
+| 4 | Trimestre achat | Barres | `purchase_date_quarter` | Montant payé |
+| 5 | Jour semaine | Barres | `purchase_date_weekday` | Commandes distinctes |
+| 6 | Partie du jour | Barres | `purchase_time_day_part` | Transactions préparées |
 | 7 | État client | Barres | `customer_state` | Montant payé |
 | 8 | Type × mois | Heatmap | détail : mois (`SUBSTRING(purchase_date_calendar_date,1,7)`) | Commandes distinctes |
 | 9 | Type × état | Heatmap | détail : `customer_state` | Transactions préparées |
@@ -43,10 +43,10 @@ Hiérarchies : **nombre d’échéances > type > montant**; **type > client et c
 | 1 | Échéances | Barres | `installments` | Montant payé |
 | 2 | Type paiement | Barres | `payment_type` | Échéances moyennes |
 | 3 | Montant par tranche 50 | Barres | `FLOOR(payment_value/50)*50` | Commandes distinctes |
-| 4 | Mois achat | Courbe | `purchase_date_calendar_month` | Ticket moyen |
+| 4 | Mois achat | Courbe | `purchase_date_month` | Ticket moyen |
 | 5 | État client | Barres | `customer_state` | Montant payé |
-| 6 | Jour semaine | Barres | `purchase_date_calendar_weekday` | Échéances moyennes |
-| 7 | Heure | Barres | `purchase_date_time_hour` | Commandes distinctes |
+| 6 | Jour semaine | Barres | `purchase_date_weekday` | Échéances moyennes |
+| 7 | Heure | Barres | `purchase_time_hour` | Commandes distinctes |
 | 8 | Échéances × type | Heatmap | détail : `payment_type` | Ticket moyen |
 | 9 | Type × mois | Heatmap | détail : mois (`SUBSTRING(purchase_date_calendar_date,1,7)`) | Commandes distinctes |
 | 10 | Échéances × tranche montant | Heatmap | détail : tranche `FLOOR(payment_value/50)*50` | Montant payé |
@@ -60,8 +60,8 @@ Hiérarchies : **montant > commande > type**; **date d’achat > marché client*
 | 1 | Tranche montant 25 | Barres | `FLOOR(payment_value/25)*25` | Ticket moyen |
 | 2 | Type paiement | Barres | `payment_type` | Montant total |
 | 3 | Échéances | Barres | `installments` | Commandes distinctes |
-| 4 | Mois achat | Courbe | `purchase_date_calendar_month` | Ticket moyen |
-| 5 | Année achat | Courbe | `purchase_date_calendar_year` | Montant total |
+| 4 | Mois achat | Courbe | `purchase_date_month` | Ticket moyen |
+| 5 | Année achat | Courbe | `purchase_date_year` | Montant total |
 | 6 | État client | Barres | `customer_state` | Commandes distinctes |
 | 7 | Ville client | Barres | `customer_city` | Ticket moyen |
 | 8 | Type × tranche montant | Heatmap | détail : tranche `FLOOR(payment_value/25)*25` | Montant |
@@ -79,11 +79,11 @@ Hiérarchies : **état > ville > code postal**; **client > type de paiement > co
 | 3 | Code postal | Barres | `customer_zip_code` | Ticket moyen |
 | 4 | Client unique | Barres | `customer_unique_id` | Montant total |
 | 5 | Type paiement | Barres | `payment_type` | Commandes distinctes |
-| 6 | Mois achat | Courbe | `purchase_date_calendar_month` | Ticket moyen |
+| 6 | Mois achat | Courbe | `purchase_date_month` | Ticket moyen |
 | 7 | État × type | Heatmap | détail : `payment_type` | Montant total |
 | 8 | Ville × type | Heatmap | détail : `payment_type` | Commandes distinctes |
 | 9 | Client × type | Heatmap | détail : `payment_type` | Ticket moyen |
-| 10 | Heure achat | Barres | `purchase_date_time_hour` | Montant total |
+| 10 | Heure achat | Barres | `purchase_time_hour` | Montant total |
 
 ## Dashboard 5 — Couverture des commandes et cohérence des agrégats
 
@@ -92,12 +92,12 @@ Hiérarchies : **type > commande**; **période > client > état**. Pour contrôl
 | # | Visuel | Type | Dimension / détail | Mesure |
 |---|---|---|---|---|
 | 1 | Type paiement | Barres | `payment_type` | Commandes distinctes |
-| 2 | Mois achat | Courbe | `purchase_date_calendar_month` | Montant total |
+| 2 | Mois achat | Courbe | `purchase_date_month` | Montant total |
 | 3 | État client | Barres | `customer_state` | Transactions préparées |
 | 4 | Client unique | Barres | `customer_unique_id` | Commandes distinctes |
 | 5 | Échéances | Barres | `installments` | Montant total |
 | 6 | Tranche montant | Barres | tranches de montant | Transactions préparées |
-| 7 | Jour semaine | Barres | `purchase_date_calendar_weekday` | Commandes distinctes |
+| 7 | Jour semaine | Barres | `purchase_date_weekday` | Commandes distinctes |
 | 8 | Type × mois | Heatmap | détail : mois (`SUBSTRING(purchase_date_calendar_date,1,7)`) | Montant total |
 | 9 | Type × échéances | Heatmap | détail : `installments` | Transactions préparées |
 | 10 | Commande | Barres | `order_id` | Commandes distinctes |
