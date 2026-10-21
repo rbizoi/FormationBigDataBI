@@ -52,13 +52,18 @@ def object_uris(table):
     return [f"s3://{S3_BUCKET}/{key}" for key in sorted(keys)]
 
 def task_spec(table, definition):
-    metrics = [{"type": agg, "name": field, "fieldName": field}
-               for field, agg in definition["metrics"].items()]
+    dimension_types = definition.get("dimension_types", {})
+    dimensions = [
+        {"type": dimension_types.get(name, "string"), "name": name}
+        for name in definition["dimensions"]
+    ]
     schema = {
         "dataSource": table,
         "timestampSpec": {"column": "event_ts", "format": "iso"},
-        "dimensionsSpec": {"dimensions": definition["dimensions"]},
-        "metricsSpec": metrics,
+        "dimensionsSpec": {"dimensions": dimensions},
+        # These datasources are row-grain (rollup=false); aggregators here
+        # would replace original numeric values with pre-aggregated values.
+        "metricsSpec": [],
         "granularitySpec": {"type": "uniform", "segmentGranularity": "DAY",
                             "queryGranularity": "NONE", "rollup": False},
     }
@@ -102,7 +107,41 @@ def wait_until_queryable(table, expected_rows, timeout_seconds=180):
         time.sleep(5)
 
 
+def validate_fact_payment_dimensions():
+    categories = request(
+        "POST", "/druid/v2/sql",
+        json={"query": 'SELECT payment_type, COUNT(*) AS n '
+                       'FROM "fact_payment" GROUP BY payment_type'},
+    ).json()
+    values = {str(row.get("payment_type", "")).strip().lower() for row in categories}
+    if len(values) < 2 or "aggregated" in values or "" in values:
+        raise RuntimeError(
+            "fact_payment lost its payment_type dimension: "
+            f"expected multiple raw values, found {sorted(values)}"
+        )
+
+    numeric = request(
+        "POST", "/druid/v2/sql",
+        json={"query": 'SELECT MIN(installments) AS min_installments, '
+                       'MAX(payment_value) AS max_payment_value '
+                       'FROM "fact_payment"'},
+    ).json()
+    if not numeric or numeric[0].get("min_installments") is None \
+            or numeric[0].get("max_payment_value") is None:
+        raise RuntimeError(
+            "fact_payment numeric dimensions installments/payment_value "
+            "are not queryable"
+        )
+
+
 def ingest_table(table, definition):
+    if table == "fact_payment":
+        required = {"payment_type", "installments", "payment_value"}
+        missing = required - set(definition["dimensions"])
+        if missing:
+            raise RuntimeError(
+                f"fact_payment manifest is missing raw dimensions: {sorted(missing)}"
+            )
     body = task_spec(table, definition)
     task_id = request("POST", "/druid/indexer/v1/task", json=body).json()["task"]
     deadline = time.monotonic() + 1800
@@ -111,6 +150,8 @@ def ingest_table(table, definition):
         state = status.get("status", {}).get("status")
         if state == "SUCCESS":
             wait_until_queryable(table, definition["rows"])
+            if table == "fact_payment":
+                validate_fact_payment_dimensions()
             print(f"DRUID_EBRASIL_TABLE_OK datasource={table} rows={definition['rows']}", flush=True)
             return
         if state == "FAILED":
