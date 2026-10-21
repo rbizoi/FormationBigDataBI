@@ -63,6 +63,26 @@ def check_silver_and_druid():
         if int(rows) != int(definition["rows"]):
             raise AssertionError(
                 f"Druid row count mismatch for {table}: {rows} != {definition['rows']}")
+
+    payment_types = query(
+        'SELECT payment_type, COUNT(*) AS n FROM "fact_payment" '
+        'GROUP BY payment_type'
+    )
+    values = {str(row.get("payment_type", "")).strip().lower()
+              for row in payment_types}
+    if len(values) < 2 or "aggregated" in values or "" in values:
+        raise AssertionError(
+            f"fact_payment payment_type dimension is not preserved: {sorted(values)}"
+        )
+    numeric = query(
+        'SELECT MIN(installments) AS min_installments, '
+        'MAX(payment_value) AS max_payment_value FROM "fact_payment"'
+    )
+    if (not numeric or numeric[0].get("min_installments") is None
+            or numeric[0].get("max_payment_value") is None):
+        raise AssertionError(
+            "fact_payment installments/payment_value numeric dimensions are missing"
+        )
     print(f"EBRASIL_SILVER_DRUID_CHECK_OK tables={len(tables)}")
 
 def main():
