@@ -7,4 +7,3 @@ spark/notebooks
 images
 documentation
 **/__pycache__
-.env
