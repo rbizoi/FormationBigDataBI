@@ -11,6 +11,7 @@ matplotlib
 seaborn
 pycountry
 plotly
+folium
 pygraphviz
 apachelogs
 user-agents
