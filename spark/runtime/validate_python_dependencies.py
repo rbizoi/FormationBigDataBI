@@ -6,6 +6,7 @@ from importlib import import_module
 MODULES = (
     "cairo",
     "jupyterlab",
+    "folium",
     "sql",
     "psycopg2",
     "cx_Oracle",
